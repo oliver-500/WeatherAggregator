@@ -1,0 +1,5 @@
+pub mod openweatherapi_current_weather_response;
+pub mod weatherapi_current_weather_response;
+pub mod health_check_response;
+pub mod unified_current_weather_response;
+pub mod geocoding_response;

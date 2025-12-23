@@ -1,0 +1,7 @@
+*.key
+*.pem
+*.env
+*.p12
+*.ps1
+*.yaml
+*.idea
