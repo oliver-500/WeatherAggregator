@@ -3,7 +3,9 @@ use actix_web::{error, HttpResponse};
 use actix_web::http::StatusCode;
 use chrono::{DateTime, Utc};
 use serde::{Serialize};
-use crate::org::unibl::etf::model::errors::adapter_error::AdapterError;
+
+use crate::org::unibl::etf::model::errors::aggregator_error::AggregatorError;
+use crate::org::unibl::etf::model::errors::external_api_adapter_error_message::{AdapterError, ExternalAPIAdapterError};
 
 #[derive(Serialize, Debug)]
 pub struct GenericServiceError {
@@ -12,29 +14,18 @@ pub struct GenericServiceError {
 
 #[derive(Serialize, Debug)]
 pub struct GenericServiceErrorDetails {
-    pub code: AdapterError,
+    pub code: AggregatorError,
     pub code_numeric: u16,
     pub message: String,
-    pub provider: String,
     pub timestamp: DateTime<Utc>,
 }
 
 impl GenericServiceErrorDetails {
-    pub fn new_config_error(provider: &str) -> Self {
-        Self {
-            code: AdapterError::ServerError(Some("No configuration found for this provider.".into())),
-            code_numeric: 500,
-            message: "No configuration found for this provider.".into(),
-            provider: provider.to_string(),
-            timestamp: Utc::now(),
-        }
-    }
-    pub fn new_adapter_error(provider: &str, e: AdapterError) -> Self {
+    pub fn new_aggregator_error(e: AggregatorError) -> Self {
         Self {
             code: e.clone(),
             code_numeric: e.as_numeric(),
             message: e.get_message(),
-            provider: provider.to_string(),
             timestamp: Utc::now(), //mozda lokal time!!!
         }
     }
@@ -50,10 +41,12 @@ impl fmt::Display for GenericServiceError {
 impl error::ResponseError for GenericServiceError {
     fn status_code(&self) -> StatusCode {
         let status_code : StatusCode = match self.error.code {
-            AdapterError::AmbiguousLocation(_,) => {
+            AggregatorError::ValidationError(_) => {
                 StatusCode::BAD_REQUEST
             },
-            _ => StatusCode::INTERNAL_SERVER_ERROR
+            _ => {
+                StatusCode::INTERNAL_SERVER_ERROR
+            },
         };
         status_code
     }
@@ -63,5 +56,4 @@ impl error::ResponseError for GenericServiceError {
             .json(&self)
     }
 }
-
 

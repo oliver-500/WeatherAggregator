@@ -1,3 +1,4 @@
+use crate::org::unibl::etf::util::serializers::serialize_empty_string;
 use serde::{Serialize, Serializer};
 use crate::org::unibl::etf::model::responses::geocoding_response::GeocodingResponse;
 
@@ -8,7 +9,7 @@ pub struct AmbiguousLocationError {
     pub candidates: Vec<Candidate>
 }
 
-#[derive(Serialize, Debug,Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct Candidate {
     pub location: String,
     #[serde(serialize_with = "serialize_empty_string")]
@@ -18,15 +19,7 @@ pub struct Candidate {
     pub lon: f64
 }
 
-fn serialize_empty_string<S>(value: &Option<String>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    match value {
-        Some(v) => serializer.serialize_str(&v.to_string()),
-        None => serializer.serialize_str(""), // Frontend gets ""
-    }
-}
+
 
 impl TryFrom<GeocodingResponse> for Candidate {
     type Error = String;

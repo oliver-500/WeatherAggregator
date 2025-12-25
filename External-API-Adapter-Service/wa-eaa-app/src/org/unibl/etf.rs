@@ -6,3 +6,4 @@ pub mod model;
 
 pub mod configuration;
 pub mod middlewares;
+pub mod util;

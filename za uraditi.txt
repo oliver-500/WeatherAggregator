@@ -1,12 +1,12 @@
 swagger 
-da na osnovu ip adrese odredi lokaciju i odma prikaze temperaturu, na osnovu browserfingerprinta da cuva podatke o identitetu, i login
+da na osnovu ip adrese odredi lokaciju i odma prikaze temperaturu,
 tracing
-openweathermap geocoding api za frontend
+
 aggregation service je provider agnostic dok je eaa servis provider specific
-popraviti enum serialization kod errora
+
 po imenu pretrazivanje(bilo koji jezik) 5 odgovora limit ako pritisne show more traziti vise odgovora(koristiti koordinate vracene za slanje upita za exact lokaciju)
  
-tracing
 koristen transakcioni skript vjrv
-serijalizatore faktorisati u jedan fajl
-da bi smanjio dupliranje koda parametrizovati provider kod getcurrentweatherdata
+
+konfigurabilan mtls
+mozda secrets kroz env variable pa tek onda u yaml

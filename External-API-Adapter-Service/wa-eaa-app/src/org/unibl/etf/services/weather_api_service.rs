@@ -29,19 +29,15 @@ impl WeatherAPIService {
             .await
             .map_err(|e : Error| {
                 AdapterError::ConnectionError(e.to_string())
-            })?; //network connection errors
-
-
-        if response.status().is_success() {
-            // 1. Get the raw text first
-            let body_text = response.text().await.map_err(|e| {
-                AdapterError::ConnectionError(format!("Failed to get body text: {}", e))
             })?;
 
-            // 2. Parse manually using serde_json
+        if response.status().is_success() {
+            let body_text = response.text().await.map_err(|e| {
+                AdapterError::ServerError(Some(format!("Failed to get body text: {}", e)))
+            })?;
+
             let data: WeatherAPICurrentWeatherResponse = serde_json::from_str(&body_text)
                 .map_err(|e| {
-                    // This 'e' will now contain the EXACT field and line number
                     AdapterError::ApiResponseParsingError(format!(
                         "JSON Error: {} | Raw Body: {}",
                         e, body_text
@@ -53,37 +49,28 @@ impl WeatherAPIService {
             let status = response.status();
 
             match status {
-                StatusCode::NOT_FOUND | StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                StatusCode::NOT_FOUND |
+                StatusCode::UNAUTHORIZED |
+                StatusCode::FORBIDDEN => {
                     let error_body_text = response.text().await.map_err(|e| {
-                        AdapterError::ConnectionError(format!("Failed to get error body text: {}", e))
+                        AdapterError::ServerError(Some(format!("Failed to get error body text: {}", e)))
                     })?;
 
                     let error_body: WeatherAPIErrorMessageResponse = serde_json::from_str(&error_body_text)
                         .map_err(|e| {
-                            // This 'e' will now contain the EXACT field and line number
                             AdapterError::ApiResponseParsingError(format!(
                                 "JSON Error: {} | Raw Body: {}",
                                 e, error_body_text
                             ))
                         })?;
-                    
-                    // Return your own custom error message using the API's "message" field
-                    Err(AdapterError::ExternalApiError(error_body.error.code, error_body.error.message))
+                    Err(AdapterError::ExternalApiError(error_body.error.code, Some(error_body.error.message)))
                 },
-
                 _ => {
-                    Err(AdapterError::ExternalApiError(status.as_u16(), "Unknown external API error".to_string()))
+                    Err(AdapterError::ExternalApiError(status.as_u16(), None))
                 }
             }
-
-            // 3. Handle the 400 (or other) error cases
-
         }
-
     }
-
-
-
 }
 
 impl Default for WeatherAPIService {

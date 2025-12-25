@@ -1,4 +1,11 @@
 
+use crate::org::unibl::etf::util::serializers::round_serialize;
+use crate::org::unibl::etf::util::serializers::serialize_and_round_empty_f64;
+use crate::org::unibl::etf::util::serializers::serialize_empty_string;
+use crate::org::unibl::etf::util::serializers::serialize_and_round_empty_u8;
+use crate::org::unibl::etf::util::serializers::serialize_empty_i64;
+use crate::org::unibl::etf::util::serializers::serialize_empty_u16;
+
 use serde::{Serialize, Serializer};
 use crate::org::unibl::etf::model::errors::adapter_error::AdapterError;
 use crate::org::unibl::etf::model::responses::openweatherapi_current_weather_response::{Coordinates, OpenWeatherAPICurrentWeatherResponse, Sys, Wind as Wind_OpenWeather};
@@ -15,75 +22,6 @@ pub struct UnifiedCurrentWeatherResponse {
     #[serde(serialize_with = "serialize_empty_i64")]
     pub observed_at_timestamp: Option<i64>,
 }
-
-
-fn serialize_empty_i64<S>(value: &Option<i64>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    match value {
-        Some(v) => serializer.serialize_i64(*v),
-        None => serializer.serialize_str(""), // Frontend gets ""
-    }
-}
-fn serialize_empty_string<S>(value: &Option<String>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    match value {
-        Some(v) => serializer.serialize_str(&v.to_string()),
-        None => serializer.serialize_str(""), // Frontend gets ""
-    }
-}
-
-fn serialize_empty_u16<S>(value: &Option<u16>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    match value {
-        Some(v) => serializer.serialize_u16(*v),
-        None => serializer.serialize_str(""), // Frontend gets ""
-    }
-}
-
-fn round_serialize<S>(val: &f64, s: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    // Round to 1 decimal place
-    let rounded = (val * 10.0).round() / 10.0;
-    s.serialize_f64(rounded)
-}
-
-fn serialize_and_round_empty_f64<S>(value: &Option<f64>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-
-    match value {
-        Some(v) => {
-            let rounded = (v * 10.0).round() / 10.0;
-
-            serializer.serialize_f64(rounded)
-        },
-        None => serializer.serialize_str(""), // Frontend gets ""
-    }
-}
-
-
-fn serialize_and_round_empty_u8<S>(value: &Option<u8>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-
-    match value {
-        Some(v) => {
-            serializer.serialize_u8(*v)
-        },
-        None => serializer.serialize_str(""), // Frontend gets ""
-    }
-}
-
 
 #[derive(Debug, Serialize)]
 pub struct Location {

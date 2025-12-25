@@ -23,25 +23,22 @@ impl OpenWeatherAPIService {
         api_key: &str,
     ) -> Result<OpenWeatherAPICurrentWeatherResponse, AdapterError> {
 
-
         let response = client.get(format!("{}/{}", base_api_url, endpoint).as_str())
             .query(&[
                 ("lat", &lat.to_string()),
                 ("lon", &lon.to_string()),
-                ("appid", &api_key.to_string()), // API key is placed here
-                ("units", &"metric".to_string()), // Optional: get temperature in Celsius
+                ("appid", &api_key.to_string()),
+                ("units", &"metric".to_string()),
             ])
             .send()
             .await
             .map_err(|e| AdapterError::ConnectionError(e.to_string()))?;
 
         if response.status().is_success() {
-            // 1. Get the raw text first
             let body_text = response.text().await.map_err(|e| {
-                AdapterError::ConnectionError(format!("Failed to get body text: {}", e))
+                AdapterError::ServerError(Some(format!("Failed to get body text: {}", e)))
             })?;
 
-            // 2. Parse manually using serde_json
             let data: OpenWeatherAPICurrentWeatherResponse = serde_json::from_str(&body_text)
                 .map_err(|e| {
                     // This 'e' will now contain the EXACT field and line number
@@ -57,40 +54,30 @@ impl OpenWeatherAPIService {
             let status = response.status();
 
             match status {
-                StatusCode::INTERNAL_SERVER_ERROR => {
-                    return Err(AdapterError::ExternalApiError(500, String::from("Unknown External API Server Error")));
-                },
-                StatusCode::NOT_FOUND | StatusCode::UNAUTHORIZED | StatusCode::TOO_MANY_REQUESTS | StatusCode::BAD_REQUEST => {
+                StatusCode::NOT_FOUND |
+                StatusCode::UNAUTHORIZED |
+                StatusCode::TOO_MANY_REQUESTS |
+                StatusCode::BAD_REQUEST => {
 
                     let error_body_text = response.text().await.map_err(|e| {
-                        AdapterError::ConnectionError(format!("Failed to get error body text: {}", e))
+                        AdapterError::ServerError(Some(format!("Failed to get error body text: {}", e)))
                     })?;
 
                     let error_body: OpenWeatherAPIErrorMessageResponse = serde_json::from_str(&error_body_text)
                         .map_err(|e| {
-                            // This 'e' will now contain the EXACT field and line number
                             AdapterError::ApiResponseParsingError(format!(
                                 "JSON Error: {} | Raw Body: {}",
                                 e, error_body_text
                             ))
                         })?;
-
-
-                    return Err(AdapterError::ExternalApiError(error_body.cod, error_body.message));
+                    return Err(AdapterError::ExternalApiError(error_body.cod, Some(error_body.message)));
                 },
                 _ => {
-                    return Err(AdapterError::ExternalApiError(status.as_u16(), String::from("Unexpected External API Error")));
+                    return Err(AdapterError::ExternalApiError(status.as_u16(), None));
                 }
             }
-
-
-
         }
     }
-
-
-
-
 }
 
 impl Default for OpenWeatherAPIService {

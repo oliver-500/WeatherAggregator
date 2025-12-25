@@ -7,7 +7,8 @@ pub struct CurrentWeatherRequestRaw {
     pub lat: Option<f64>,
     pub lon: Option<f64>,
     #[serde(default = "default_limit")]
-    pub limit: u8
+    pub limit: u8,
+    pub provider: String,
 }
 
 fn default_limit() -> u8 {
@@ -20,7 +21,8 @@ pub struct CurrentWeatherRequest {
     pub location: Option<String>,
     pub lat: Option<f64>,
     pub lon: Option<f64>,
-    pub limit: u8
+    pub limit: u8,
+    pub provider: String,
 
 }
 
@@ -28,16 +30,9 @@ impl TryFrom<CurrentWeatherRequestRaw> for CurrentWeatherRequest {
     type Error = String;
 
     fn try_from(raw: CurrentWeatherRequestRaw) -> Result<Self, Self::Error> {
-
-        // let mut search_by_id = 0;
-        //
-        // if raw.lat.is_some() && raw.lon.is_some() {
-        //     search_by_id = 2;
-        // }
-        // else if raw.location.is_some() {
-        //     search_by_id = 1;
-        // }
-        if raw.location.is_none() && (raw.lat.is_none() || raw.lon.is_none()) {
+        
+        if (raw.location.is_none() || raw.location.clone().unwrap().is_empty())
+            && (raw.lat.is_none() || raw.lon.is_none()) {
             return Err(String::from("Location name or Coordinates(latitude and longitude) should be provided"));
         }
 
@@ -61,7 +56,13 @@ impl TryFrom<CurrentWeatherRequestRaw> for CurrentWeatherRequest {
         };
 
         if lon_validated && lat_validated {
-            return Ok(CurrentWeatherRequest { lat: raw.lat, lon: raw.lon, location: raw.location, limit: raw.limit });
+            return Ok(CurrentWeatherRequest {
+                lat: raw.lat,
+                lon: raw.lon,
+                location: raw.location,
+                limit: raw.limit,
+                provider: raw.provider
+            });
         } else if !lat_validated {
             return Err(format!("Invalid latitude: {}", raw.lat.ok_or("")?));
         } else {
