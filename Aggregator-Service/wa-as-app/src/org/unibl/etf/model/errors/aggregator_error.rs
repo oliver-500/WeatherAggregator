@@ -11,7 +11,7 @@ pub enum AggregatorError {
     ResponseParsingError(String),
 
     // The Catch-all: This maps things like EndpointNotFound or UnknownProvider
-    #[serde(rename = "UNEXPECTED_ADAPTER_ERROR")]
+    #[serde(rename = "UNEXPECTED_ERROR")]
     UnexpectedError(String),
 }
 

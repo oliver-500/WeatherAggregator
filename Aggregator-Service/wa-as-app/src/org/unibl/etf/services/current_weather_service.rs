@@ -1,6 +1,5 @@
 use crate::org::unibl::etf::model::errors::aggregator_error::AggregatorError;
 use crate::org::unibl::etf::configuration;
-use crate::org::unibl::etf::controllers::errors::GenericServiceError;
 use crate::org::unibl::etf::model::errors::external_api_adapter_error_message::ExternalAPIAdapterError;
 use crate::org::unibl::etf::model::requests::downstream_current_weather_request::DownstreamCurrentWeatherRequest;
 use crate::org::unibl::etf::model::requests::upstream_current_weather_request::UpstreamCurrentWeatherRequest;

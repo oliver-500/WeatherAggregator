@@ -38,5 +38,5 @@ impl TryFrom<&UpstreamCurrentWeatherRequest> for DownstreamCurrentWeatherRequest
 
 
 fn default_provider() -> String {
-    "openweathermap.org".to_owned()
+    "weatherapi.com".to_owned()
 }

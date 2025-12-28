@@ -3,8 +3,8 @@ use actix_web::{error, HttpResponse};
 use actix_web::http::StatusCode;
 use chrono::{DateTime, Utc};
 use serde::{Serialize};
-
-use crate::org::unibl::etf::model::errors::aggregator_error::AggregatorError;
+use crate::org::unibl::etf::model::errors::adapter_service_error::AdapterServiceError;
+use crate::org::unibl::etf::util::serializers::format_milliseconds;
 
 #[derive(Serialize, Debug)]
 pub struct GenericServiceError {
@@ -13,19 +13,22 @@ pub struct GenericServiceError {
 
 #[derive(Serialize, Debug)]
 pub struct GenericServiceErrorDetails {
-    pub code: AggregatorError,
+    pub code: AdapterServiceError,
     pub code_numeric: u16,
     pub message: String,
+    #[serde(serialize_with = "format_milliseconds")]
     pub timestamp: DateTime<Utc>,
+    pub provider: String,
 }
 
 impl GenericServiceErrorDetails {
-    pub fn new_aggregator_error(e: AggregatorError) -> Self {
+    pub fn new_adapter_error(provider: &str, e: AdapterServiceError) -> Self {
         Self {
             code: e.clone(),
             code_numeric: e.as_numeric(),
             message: e.get_message(),
             timestamp: Utc::now(), //mozda lokal time!!!
+            provider: provider.to_string(),
         }
     }
 }
@@ -40,12 +43,10 @@ impl fmt::Display for GenericServiceError {
 impl error::ResponseError for GenericServiceError {
     fn status_code(&self) -> StatusCode {
         let status_code : StatusCode = match self.error.code {
-            AggregatorError::ValidationError(_) => {
-                StatusCode::BAD_REQUEST
+            AdapterServiceError::LocationNotFoundError(_) => {
+                StatusCode::NOT_FOUND
             },
-            _ => {
-                StatusCode::INTERNAL_SERVER_ERROR
-            },
+            _ => StatusCode::INTERNAL_SERVER_ERROR
         };
         status_code
     }
@@ -55,4 +56,5 @@ impl error::ResponseError for GenericServiceError {
             .json(&self)
     }
 }
+
 
