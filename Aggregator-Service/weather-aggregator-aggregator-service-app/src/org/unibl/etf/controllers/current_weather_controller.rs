@@ -18,7 +18,7 @@ async fn get_current_weather_data(
     configuration: web::Data<Vec<ProviderSettings>>,
     current_weather_service: web::Data<CurrentWeatherService>
 ) -> Result<impl Responder, GenericServiceError> {
-    println!("{:?}", query.location_name    );
+    println!("{:?}", query.location_name);
 
     Ok(current_weather_service.get_current_weather_data(
         query.as_ref(),
@@ -26,8 +26,11 @@ async fn get_current_weather_data(
         configuration.as_ref()
     ).await
            .and_then(|current_weather_data| Ok(HttpResponse::Ok().json(current_weather_data)))
-           .map_err(|e| GenericServiceError {
-               error: GenericServiceErrorDetails::new_aggregator_error(e)
+           .map_err(|e| {
+               println!("op1");
+               GenericServiceError {
+                   error: GenericServiceErrorDetails::new_aggregator_error(e)
+               }
            })?
     )
 }

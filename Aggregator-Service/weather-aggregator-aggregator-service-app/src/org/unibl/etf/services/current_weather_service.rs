@@ -5,6 +5,9 @@ use crate::org::unibl::etf::model::errors::external_api_adapter_error_message::A
 use crate::org::unibl::etf::model::requests::downstream_current_weather_request::DownstreamCurrentWeatherRequest;
 use crate::org::unibl::etf::model::requests::upstream_current_weather_request::UpstreamCurrentWeatherRequest;
 use crate::org::unibl::etf::model::responses::current_weather_response::CurrentWeatherResponse;
+use crate::org::unibl::etf::strategy::composite_strategy::CompositeStrategy;
+use crate::org::unibl::etf::strategy::priority_strategy::PriorityStrategy;
+use crate::org::unibl::etf::strategy::weather_strategy::WeatherStrategy;
 
 pub struct CurrentWeatherService {
 
@@ -103,17 +106,72 @@ impl CurrentWeatherService {
 
 
         // 3. Process the results
-        for (index, res) in results.into_iter().enumerate() {
-            match res {
-                Ok(resp) => {
-                    println!("Success from provider: {}, response: {:?}", providers_settings[index].name, resp);
-                },
-                Err(e) => println!("Error from provider {}: {}", providers_settings[index].name, e.get_message()),
+
+        let results: Vec<WeatherProviderResult> =
+            results.into_iter().enumerate().map(|(index, res)| {
+                let provider = providers_settings[index].name.clone();
+                match res {
+                    Ok(data) => {
+                        println!("Success from provider: {}, response: {:?}", providers_settings[index].name, data);
+                        WeatherProviderResult {
+                            provider,
+                            data: Some(data),
+                            error: None,
+                        }
+                    },
+                    Err(e) => {
+                        println!("Error from provider {}: {}", providers_settings[index].name, e.get_message());
+                        WeatherProviderResult {
+                            provider,
+                            data: None,
+                            error: Some(e),
+                        }
+                    },
+                }
+            }).collect();
+
+
+
+
+        let errors: Vec<&AggregatorError> = results.iter().filter_map(|r| r.error.as_ref()).collect();
+
+        if let Some(candidates) = errors.iter().find_map(|e| {
+            if let AggregatorError::AmbiguousLocationNameError(candidates) = e {
+                Some(candidates.clone())
+            } else {
+                None
             }
+        }) {
+            return Err(AggregatorError::AmbiguousLocationNameError(candidates));
         }
 
-        Err(AggregatorError::ServerError(None))
+        if let Some(location) = errors.iter().find_map(|e| {
+            if let AggregatorError::LocationNotFoundError(location) = e {
+                Some(location.clone())
+            } else {
+                None
+            }
+        }) {
+            return Err(AggregatorError::LocationNotFoundError(location));
+        }
 
+        let strategy = CompositeStrategy {
+            average_min: 2,
+            priority: PriorityStrategy {
+                order: vec!["openweathermap.org".into(), "weatherapi.com".into()],
+            },
+        };
+
+        let final_weather_result = strategy.resolve(&results);
+
+        match final_weather_result {
+            None => {
+                Err(AggregatorError::WeatherDataUnavailableError)
+            }
+            Some(res) => {
+                Ok(res)
+            }
+        }
     }
 }
 
@@ -122,4 +180,10 @@ impl Default for CurrentWeatherService {
     fn default() -> Self {
         Self::new()
     }
+}
+#[derive(Debug)]
+pub struct WeatherProviderResult {
+    pub provider: String,
+    pub data: Option<CurrentWeatherResponse>,
+    pub error: Option<AggregatorError>,
 }

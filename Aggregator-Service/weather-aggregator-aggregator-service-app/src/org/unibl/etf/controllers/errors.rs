@@ -39,9 +39,19 @@ impl fmt::Display for GenericServiceError {
 
 impl error::ResponseError for GenericServiceError {
     fn status_code(&self) -> StatusCode {
+        println!("{:?}", self.error.code);
         let status_code : StatusCode = match self.error.code {
             AggregatorError::RequestParametersValidationError(_) => {
                 StatusCode::BAD_REQUEST
+            },
+            AggregatorError::WeatherDataUnavailableError => {
+                StatusCode::NOT_FOUND
+            },
+            AggregatorError::LocationNotFoundError(_) => {
+                StatusCode::NOT_FOUND
+            },
+            AggregatorError::AmbiguousLocationNameError(_) => {
+                StatusCode::CONFLICT
             },
             _ => {
                 StatusCode::INTERNAL_SERVER_ERROR

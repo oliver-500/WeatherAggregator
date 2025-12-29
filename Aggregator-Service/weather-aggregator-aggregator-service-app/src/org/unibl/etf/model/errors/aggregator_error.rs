@@ -10,6 +10,7 @@ pub enum AggregatorError {
     LocationNotFoundError(Option<String>),
     ConnectionError(Option<String>),
     ResponseParsingError(Option<String>),
+    WeatherDataUnavailableError,
 
 }
 
@@ -33,6 +34,9 @@ impl AggregatorError {
                 String::from("AmbiguousLocationNameError")
             },
             AggregatorError::LocationNotFoundError(s) => format!("LocationNotFoundError: {}", s.clone().unwrap_or(String::from(""))),
+            AggregatorError::WeatherDataUnavailableError => {
+                String::from("No provider could return weather data")
+            }
             _ => { String::default() }
         }
     }
@@ -48,6 +52,9 @@ impl AggregatorError {
             }
             AggregatorError::ResponseParsingError(_) => {
                 500
+            },
+            AggregatorError::WeatherDataUnavailableError => {
+                404
             }
         }
     }
