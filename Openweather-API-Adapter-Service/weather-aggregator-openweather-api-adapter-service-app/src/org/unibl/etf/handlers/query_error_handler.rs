@@ -7,7 +7,7 @@ use crate::org::unibl::etf::model::errors::adapter_service_error::AdapterService
 pub fn handle_validation_error(err: Error, _req: &HttpRequest) -> actix_web::Error {
     let resp = GenericServiceError {
         error: GenericServiceErrorDetails {
-            code: AdapterServiceError::ValidationError(Some(err.to_string())),
+            code: AdapterServiceError::RequestParametersValidationError(Some(err.to_string())),
             code_numeric: 400,
             message: "Validation of provided query parameters failed.".to_string(),
             timestamp: Utc::now(),

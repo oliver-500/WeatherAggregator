@@ -5,10 +5,11 @@ use crate::org::unibl::etf::controllers::errors::generic_service_error::{Generic
 use crate::org::unibl::etf::model::errors::adapter_service_error::AdapterServiceError;
 
 pub fn handle_validation_error(err: Error, _req: &HttpRequest) -> actix_web::Error {
+    let adapter_error = AdapterServiceError::RequestParametersValidationError(Some(err.to_string()));
     let resp = GenericServiceError {
         error: GenericServiceErrorDetails {
-            code: AdapterServiceError::ValidationError(Some(err.to_string())),
-            code_numeric: 400,
+            code: adapter_error.clone(),
+            code_numeric: adapter_error.as_numeric(),
             message: "Validation of provided query parameters failed.".to_string(),
             timestamp: Utc::now(),
             provider: "weatherapi.com".into(),

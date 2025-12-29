@@ -3,7 +3,7 @@ use serde::{Deserialize, Deserializer};
 
 #[derive(Deserialize, Debug)]
 pub struct GeocodingGenericError {
-    pub(crate) error: GeocodingGenericErrorDetails,
+    pub error: GeocodingGenericErrorDetails,
 }
 
 #[derive(Deserialize, Debug)]
@@ -19,14 +19,14 @@ pub struct GeocodingGenericErrorDetails {
 #[derive(Debug, Clone)]
 pub enum GeocodingServiceError {
     LocationNotFoundError(Option<String>),
-    GeocodingGenericError,
+    ServerError,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 enum RawRemoteError {
     LocationNotFoundError(Option<String>),
-    // We use this to catch any OTHER key sent by the server
+    ServerError,
     #[serde(other)]
     Unknown,
 }
@@ -41,12 +41,14 @@ where
             Ok(GeocodingServiceError::LocationNotFoundError(msg))
         }
         RawRemoteError::Unknown => {
-            Ok(GeocodingServiceError::GeocodingGenericError)
+            Ok(GeocodingServiceError::ServerError)
+        },
+        RawRemoteError::ServerError => {
+            Ok(GeocodingServiceError::ServerError)
         }
     }
 }
 
-// --- Helper for the Timestamp ---
 fn deserialize_timestamp<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
 where
     D: Deserializer<'de>,

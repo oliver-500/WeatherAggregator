@@ -9,10 +9,32 @@ pub enum GeocodingServiceError {
     ServerError(Option<String>),
     ExternalGeocodingApiError(u16, Option<String>),
     LocationNotFoundError(Option<String>),
-    ValidationError(Option<String>),
+    RequestValidationError(Option<String>),
 }
 
+
+
 impl GeocodingServiceError {
+
+    pub fn get_sanitized_error(&self) -> GeocodingServiceError {
+        match self {
+            Self::LocationNotFoundError(s) => Self::LocationNotFoundError(s.clone()),
+            _ => Self::ServerError(None),
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::ConnectionError(_) => "CONNECTION_ERROR",
+            Self::ResponseParsingError(_) => "RESPONSE_PARSING_ERROR",
+            Self::ServerError(_) => "SERVER_ERROR",
+            Self::ExternalGeocodingApiError(_, _) => "EXTERNAL_GEOCODING_API_ERROR",
+            Self::LocationNotFoundError(_) => "LOCATION_NOT_FOUND_ERROR",
+            Self::RequestValidationError(_) => "REQUEST_VALIDATION_ERROR",
+        }
+    }
+
+
     pub fn get_message(&self) -> String {
         match self {
             GeocodingServiceError::ResponseParsingError(msg) => msg.clone().unwrap_or(String::default()),
@@ -35,22 +57,8 @@ impl GeocodingServiceError {
 
     pub fn as_numeric(&self) -> u16 {
         match self {
-            GeocodingServiceError::ConnectionError(_) => 1000,
-            GeocodingServiceError::ResponseParsingError(_) => 1001,
-            GeocodingServiceError::ServerError(_) => 500,
-            GeocodingServiceError::ExternalGeocodingApiError(error_code, _) => {
-                match error_code {
-                    400 => 1002,
-                    401 => 1003,
-                    403 => 1004,
-                    404 => 1005,
-                    429 => 1006,
-                    _ => 1007,
-                }
-            },
-
-            GeocodingServiceError::LocationNotFoundError(_) => 1008,
-            GeocodingServiceError::ValidationError(_) => 1009,
+            GeocodingServiceError::LocationNotFoundError(_) => 1000,
+            _ => 1001,
         }
     }
 }

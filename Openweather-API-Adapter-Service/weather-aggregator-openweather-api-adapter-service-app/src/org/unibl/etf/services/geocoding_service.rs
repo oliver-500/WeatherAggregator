@@ -3,7 +3,7 @@ use crate::org::unibl::etf::configuration::settings::GeocodingServiceSettings;
 
 use crate::org::unibl::etf::model::errors::adapter_service_error::AdapterServiceError;
 
-use crate::org::unibl::etf::model::errors::geocoding_error::GeocodingGenericError;
+use crate::org::unibl::etf::model::errors::geocoding_error::{GeocodingGenericError};
 use crate::org::unibl::etf::model::responses::geocoding_response::GeocodingResponse;
 
 pub struct GeocodingService {
@@ -31,12 +31,15 @@ impl GeocodingService {
             ])
             .send()
             .await
-            .map_err(|_e| AdapterServiceError::ConnectionError)?;
+            .map_err(|e| {
+                AdapterServiceError::ConnectionError(Some(e.to_string()))
+            })?;
 
         if response.status().is_success() {
             let body_text = response.text().await.map_err(|e| {
-                AdapterServiceError::ServerError(Some(format!("Failed to get Geocoding Service response body text: {}", e)))
+                AdapterServiceError::ServerError(Some(e.to_string()))
             })?;
+
 
             println!("{}", body_text);
 
@@ -49,12 +52,13 @@ impl GeocodingService {
                 })?;
 
             if data.candidates.len() == 0 {
+                println!("No candidates");
                 return Err(AdapterServiceError::LocationNotFoundError(Some(location.to_string())));
             } else if data.candidates.len() == 1 {
                 let geocoding_response = data.candidates.get(0).unwrap();
                 return Ok((geocoding_response.lat, geocoding_response.lon));
             } else {
-                return Err(AdapterServiceError::AmbiguousLocationName(data.candidates));
+                return Err(AdapterServiceError::AmbiguousLocationNameError(data.candidates));
             }
         }
         else {
@@ -66,7 +70,7 @@ impl GeocodingService {
                 StatusCode::TOO_MANY_REQUESTS |
                 StatusCode::BAD_REQUEST => {
                     let error_body_text = response.text().await.map_err(|e| {
-                        AdapterServiceError::ServerError(Some(format!("Failed to get Geocoding Service response error body text: {}", e)))
+                        AdapterServiceError::ServerError(Some(e.to_string()))
                     })?;
 
                     println!("{}", error_body_text);
@@ -80,10 +84,13 @@ impl GeocodingService {
                                     e, error_body_text
                                 )))
                             })?;
-                    return Err(AdapterServiceError::GeocodingError(error_body.error.code_numeric, Some(error_body.error.message)));
+
+                    return Err(AdapterServiceError::from(error_body.error.code));
+
+
                 },
                 _ => {
-                    return Err(AdapterServiceError::GeocodingError(status.as_u16(), None));
+                    return Err(AdapterServiceError::GeocodingServiceError(status.as_u16(), None));
                 }
             }
         }

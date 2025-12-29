@@ -6,12 +6,12 @@ use serde::{Serialize};
 use crate::org::unibl::etf::model::errors::adapter_service_error::AdapterServiceError;
 use crate::org::unibl::etf::util::serializers::format_milliseconds;
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct GenericServiceError {
     pub error: GenericServiceErrorDetails,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct GenericServiceErrorDetails {
     pub code: AdapterServiceError,
     pub code_numeric: u16,
@@ -46,14 +46,25 @@ impl error::ResponseError for GenericServiceError {
             AdapterServiceError::LocationNotFoundError(_) => {
                 StatusCode::NOT_FOUND
             },
+            AdapterServiceError::RequestParametersValidationError(_) => {
+                StatusCode::BAD_REQUEST
+            },
             _ => StatusCode::INTERNAL_SERVER_ERROR
         };
         status_code
     }
 
     fn error_response(&self) -> HttpResponse {
+        let mut sanitized_details = self.error.clone();
+
+        // 2. Sanitize the clone
+        sanitized_details.code = sanitized_details.code.get_sanitized_error();
+
+
         HttpResponse::build(self.status_code())
-            .json(&self)
+            .json(GenericServiceError {
+                error: sanitized_details,
+            })
     }
 }
 

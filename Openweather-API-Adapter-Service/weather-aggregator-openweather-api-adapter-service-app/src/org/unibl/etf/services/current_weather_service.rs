@@ -29,7 +29,7 @@ impl CurrentWeatherService {
             ])
             .send()
             .await
-            .map_err(|_e| AdapterServiceError::ConnectionError)?;
+            .map_err(|e| AdapterServiceError::ConnectionError(Some(e.to_string())))?;
 
         if response.status().is_success() {
             let body_text = response.text().await.map_err(|e| {

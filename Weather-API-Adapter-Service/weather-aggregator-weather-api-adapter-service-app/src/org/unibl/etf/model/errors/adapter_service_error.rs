@@ -7,14 +7,25 @@ pub enum AdapterServiceError {
     ExternalAPIResponseParsingError(Option<String>),
     ServerError(Option<String>),
     WeatherAPIError(u16, Option<String>),
-    LocationNotFoundError(Option<String>),
-    ValidationError(Option<String>),
-    InvalidProviderResponse(Option<String>),
-    GeocodingError(u16, Option<String>),
-    GeocodingResponseParsingError(Option<String>),
+    LocationNotFoundError(String),
+    RequestParametersValidationError(Option<String>),
+    InvalidProviderResponseError(Option<String>),
 }
 
 impl AdapterServiceError {
+
+
+    pub fn get_sanitized_error(&self) -> Self {
+
+        match self {
+            Self::LocationNotFoundError(s) => Self::LocationNotFoundError(s.clone()),
+            Self::RequestParametersValidationError(s) => Self::RequestParametersValidationError(s.clone()),
+            _ => Self::ServerError(None),
+        }
+
+    }
+
+
     pub fn get_message(&self) -> String {
         match self {
             AdapterServiceError::ExternalAPIResponseParsingError(msg) => msg.clone().unwrap_or(String::default()),
@@ -27,8 +38,8 @@ impl AdapterServiceError {
                     String::default()
                 }
             },
-            AdapterServiceError::LocationNotFoundError(msg) => {
-                format!("Location with name {} not found", msg.clone().unwrap_or(String::default()))
+            AdapterServiceError::LocationNotFoundError(location) => {
+                format!("Location with name {} not found", location)
             }
 
             _ => { String::default() }
@@ -40,24 +51,25 @@ impl AdapterServiceError {
             AdapterServiceError::ConnectionError(_) => 1000,
             AdapterServiceError::ExternalAPIResponseParsingError(_) => 1001,
             AdapterServiceError::ServerError(_) => 500,
-            AdapterServiceError::WeatherAPIError(error_code, _) => {
-                match error_code {
-                    400 => 1002,
-                    401 => 1003,
-                    403 => 1004,
-                    404 => 1005,
-                    429 => 1006,
-                    _ => 1007,
+            AdapterServiceError::WeatherAPIError(weather_api_error_code, _) => {
+                match weather_api_error_code {
+                    1002 => 1003,
+                    1003 => 1004,
+                    1005 => 1005,
+                    1006 => 1006,
+                    2006 => 1007,
+                    2007 => 1008,
+                    2008 => 1009,
+                    2009 => 1011,
+                    9000 => 1012,
+                    9001 => 1013,
+                    9999 => 1014,
+                    _ => 1015,
                 }
             },
-
-            AdapterServiceError::LocationNotFoundError(_) => 1008,
-            AdapterServiceError::ValidationError(_) => 1009,
-            AdapterServiceError::InvalidProviderResponse(_) => 1010,
-            AdapterServiceError::GeocodingError(_,_) => 1011,
-            AdapterServiceError::GeocodingResponseParsingError(_) => 1012,
-
-
+            AdapterServiceError::LocationNotFoundError(_) => 1016,
+            AdapterServiceError::RequestParametersValidationError(_) => 1017,
+            AdapterServiceError::InvalidProviderResponseError(_) => 1018,
         }
     }
 }

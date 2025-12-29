@@ -1,67 +1,81 @@
 use serde::{Serialize};
+use crate::org::unibl::etf::model::errors::geocoding_error::{GeocodingServiceError};
 use crate::org::unibl::etf::model::responses::geocoding_response::LocationCandidate;
 
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum AdapterServiceError {
-    ConnectionError,
+    ConnectionError(Option<String>),
     ExternalAPIResponseParsingError(Option<String>),
     ServerError(Option<String>),
     OpenWeatherAPIError(u16, Option<String>),
     LocationNotFoundError(Option<String>),
-    ValidationError(Option<String>),
-    InvalidProviderResponse(Option<String>),
-    GeocodingError(u16, Option<String>),
+    RequestParametersValidationError(Option<String>),
+    InvalidProviderResponseError(Option<String>),
+    GeocodingServiceError(u16, Option<String>),
     GeocodingResponseParsingError(Option<String>),
-    AmbiguousLocationName(Vec<LocationCandidate>),
+    AmbiguousLocationNameError(Vec<LocationCandidate>),
 }
 
 impl AdapterServiceError {
+
+    pub fn get_sanitized_error(&self) -> Self {
+
+        match self {
+            Self::LocationNotFoundError(s) => Self::LocationNotFoundError(s.clone()),
+            Self::AmbiguousLocationNameError(candidates) => Self::AmbiguousLocationNameError(candidates.clone()),
+            Self::RequestParametersValidationError(s) => Self::RequestParametersValidationError(s.clone()),
+            _ => Self::ServerError(None),
+        }
+
+    }
     pub fn get_message(&self) -> String {
         match self {
-            AdapterServiceError::ExternalAPIResponseParsingError(msg) => msg.clone().unwrap_or(String::default()),
-            AdapterServiceError::ConnectionError => "Failed to reach the provider.".to_string(),
-            AdapterServiceError::ServerError(msg) => msg.clone().unwrap_or(String::default()),
-            AdapterServiceError::OpenWeatherAPIError(status, message) => {
-                if let Some(message) = message {
-                    format!("Unexpected Geocoding API error with status {}: {}", status, message)
-                } else {
-                    String::default()
-                }
-            },
             AdapterServiceError::LocationNotFoundError(msg) => {
                 format!("Location with name {} not found", msg.clone().unwrap_or(String::default()))
+            },
+            AdapterServiceError::AmbiguousLocationNameError(_) => {
+                String::from("There are multiple locations with the provided name. Choose one of them.")
+            },
+            AdapterServiceError::RequestParametersValidationError(_) => {
+                String::from("Request parameters are invalid.")
             }
-
-            _ => { String::default() }
+            _ => { String::from("Unexpected server error.") }
         }
     }
 
     pub fn as_numeric(&self) -> u16 {
         match self {
-            AdapterServiceError::ConnectionError => 1000,
-            AdapterServiceError::ExternalAPIResponseParsingError(_) => 1001,
-            AdapterServiceError::ServerError(_) => 500,
+            AdapterServiceError::ServerError(_) => 1000,
             AdapterServiceError::OpenWeatherAPIError(error_code, _) => {
                 match error_code {
-                    400 => 1002,
-                    401 => 1003,
-                    403 => 1004,
-                    404 => 1005,
-                    429 => 1006,
-                    _ => 1007,
+                    400 => 1001,
+                    401 => 1002,
+                    403 => 1003,
+                    404 => 1004,
+                    429 => 1005,
+                    _ => 1006,
                 }
             },
-
             AdapterServiceError::LocationNotFoundError(_) => 1008,
-            AdapterServiceError::ValidationError(_) => 1009,
-            AdapterServiceError::InvalidProviderResponse(_) => 1010,
-            AdapterServiceError::GeocodingError(_,_) => 1011,
-            AdapterServiceError::GeocodingResponseParsingError(_) => 1012,
-            AdapterServiceError::AmbiguousLocationName(_) => 1013,
+            AdapterServiceError::AmbiguousLocationNameError(_) => 1009,
+            AdapterServiceError::RequestParametersValidationError(_) => 1010,
+            _ => 1011,
 
         }
     }
 }
 
+impl From<GeocodingServiceError> for AdapterServiceError {
+    fn from(code: GeocodingServiceError) -> Self {
+        match code {
+            GeocodingServiceError::LocationNotFoundError(s) => {
+                AdapterServiceError::LocationNotFoundError(s)
+            }
+            GeocodingServiceError::ServerError => {
+                AdapterServiceError::ServerError(None)
+            }
+        }
+    }
+}
 

@@ -74,6 +74,11 @@ impl CurrentWeatherService {
                                 e, error_body_text
                             )))
                         })?;
+                    if error_body.error.code == 1006 {
+                        return Err(AdapterServiceError::LocationNotFoundError(
+                            request.location_name.clone().unwrap())
+                        );
+                    }
                     return Err(AdapterServiceError::WeatherAPIError(error_body.error.code, Some(error_body.error.message)));
                 },
                 _ => {

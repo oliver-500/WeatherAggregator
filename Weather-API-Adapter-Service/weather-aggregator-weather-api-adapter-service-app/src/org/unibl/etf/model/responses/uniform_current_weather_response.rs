@@ -73,11 +73,17 @@ impl TryFrom<WeatherAPICurrentWeatherResponse> for UniformCurrentWeatherResponse
     type Error = AdapterServiceError;
 
     fn try_from(src: WeatherAPICurrentWeatherResponse) -> Result<Self, Self::Error> {
-        let current = src.current.ok_or(AdapterServiceError::InvalidProviderResponse(Some("Missing current field".to_string())))?;
+        let current = src.current.ok_or(
+            AdapterServiceError::InvalidProviderResponseError(Some("Missing current field".to_string()))
+        )?;
         let location = src.location.unwrap_or(WeatherAPI_Location::default());
         let condition = current.condition.unwrap_or(Condition::default());
-        let temp_c = current.temp_c.ok_or(AdapterServiceError::InvalidProviderResponse(Some("Missing mandatory temperature field".to_string())))?;
-        let temp_f = current.temp_f.ok_or(AdapterServiceError::InvalidProviderResponse(Some("Missing mandatory temperature field".to_string())))?;
+        let temp_c = current.temp_c.ok_or(
+            AdapterServiceError::InvalidProviderResponseError(Some("Missing mandatory temperature field".to_string()))
+        )?;
+        let temp_f = current.temp_f.ok_or(
+            AdapterServiceError::InvalidProviderResponseError(Some("Missing mandatory temperature field".to_string()))
+        )?;
 
         Ok(UniformCurrentWeatherResponse {
             provider: "weatherapi.com".to_string(),

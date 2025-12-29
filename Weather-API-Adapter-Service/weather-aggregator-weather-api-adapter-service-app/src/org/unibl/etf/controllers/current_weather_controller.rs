@@ -20,6 +20,7 @@ async fn get_current_weather_data(
     settings: web::Data<Settings>,
 ) -> Result<impl Responder, GenericServiceError> {
 
+    println!("lokacija: {:?}", query.as_ref());
     let res = current_weather_service
         .get_current_weather_by_coordinates_or_location_name(
             query.as_ref(),

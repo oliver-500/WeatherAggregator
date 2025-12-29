@@ -74,13 +74,13 @@ impl TryFrom<OpenWeatherAPICurrentWeatherResponse> for UniformCurrentWeatherResp
     fn try_from(src: OpenWeatherAPICurrentWeatherResponse) -> Result<Self, Self::Error> {
         let weather = src.weather
             .get(0)
-            .ok_or(AdapterServiceError::InvalidProviderResponse(Some("Empty weather array field found".to_string())))?;
+            .ok_or(AdapterServiceError::InvalidProviderResponseError(Some("Empty weather array field found".to_string())))?;
 
-        let main = src.main.ok_or(AdapterServiceError::InvalidProviderResponse(Some("Missing mandatory value. Empty main field found".to_string())))?;
+        let main = src.main.ok_or(AdapterServiceError::InvalidProviderResponseError(Some("Missing mandatory value. Empty main field found".to_string())))?;
         let coordinates = src.coord.unwrap_or(Coordinates::default());
         let sys = src.sys.unwrap_or(Sys::default());
         let wind = src.wind.unwrap_or(Wind_OpenWeather::default());
-        let temp = main.temp.ok_or(AdapterServiceError::InvalidProviderResponse(Some("Missing mandatory value. Empty main:temp field found".to_string())))?;
+        let temp = main.temp.ok_or(AdapterServiceError::InvalidProviderResponseError(Some("Missing mandatory value. Empty main:temp field found".to_string())))?;
 
         Ok(UniformCurrentWeatherResponse {
             provider: "openweathermap.org".into(), //env!!!
