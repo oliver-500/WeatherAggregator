@@ -1,0 +1,2 @@
+pub mod upstream_current_weather_request;
+pub mod downstream_current_weather_request;
