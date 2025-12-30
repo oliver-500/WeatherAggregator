@@ -1,0 +1,27 @@
+[package]
+name = "weather-aggregator-cache-service-app"
+version = "0.1.0"
+edition = "2024"
+authors = ["Oliver Erić <oliver.eric500@gmail.com>"]
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+path = "src/org/unibl/etf/main.rs"
+name = "weather-aggregator-cache-service-app"
+
+[dependencies]
+actix-web = { version = "4.12.1" }
+actix-web-validator = { version = "7.0.0"}
+serde = { version = "1.0.228", features = ["derive"] }
+serde-aux = { version = "4.7.0" }
+config = {version = "0.15.19"}
+chrono = {version = "0.4.42", features = ["serde"]}
+serde_json = "1.0.140"
+validator =  { version = "0.20.0", features = ["derive"] }
+geohash = { version = "0.13.1" }
+redis = { version = "1.0.1", features = ["tokio-comp"]}
+deadpool-redis = { version = "0.22.0", features = ["default"] }
+secrecy = {version = "0.10.3", features = ["serde"]}
+thiserror = "1.0.69"

@@ -1,0 +1,3 @@
+user default off
+
+user weather_aggregator_cache_service_app on >34jewsdfe34564 ~weather:* +@string +expire

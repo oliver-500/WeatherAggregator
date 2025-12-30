@@ -3,7 +3,7 @@ use actix_web::{error, HttpResponse};
 use actix_web::http::StatusCode;
 use chrono::{DateTime, Utc};
 use serde::{Serialize};
-use crate::org::unibl::etf::model::errors::geocoding_service_error::GeocodingServiceError;
+use crate::org::unibl::etf::model::errors::cache_service_error::CacheServiceError;
 use crate::org::unibl::etf::util::serializers::format_milliseconds;
 
 #[derive(Serialize, Debug, Clone)]
@@ -13,7 +13,7 @@ pub struct GenericServiceError {
 
 #[derive(Serialize, Debug, Clone)]
 pub struct GenericServiceErrorDetails {
-    pub code: GeocodingServiceError,
+    pub code: CacheServiceError,
     pub code_numeric: u16,
     pub message: String,
     #[serde(serialize_with = "format_milliseconds")]
@@ -21,7 +21,7 @@ pub struct GenericServiceErrorDetails {
 }
 
 impl GenericServiceErrorDetails {
-    pub fn new_geocoding_error(e: GeocodingServiceError) -> Self {
+    pub fn new_cache_error(e: CacheServiceError) -> Self {
         Self {
             code: e.clone(),
             code_numeric: e.as_numeric(),
@@ -41,12 +41,12 @@ impl fmt::Display for GenericServiceError {
 impl error::ResponseError for GenericServiceError {
     fn status_code(&self) -> StatusCode {
         let status_code : StatusCode = match self.error.code {
-            GeocodingServiceError::LocationNotFoundError(_) => {
+            CacheServiceError::CacheMissError(_, _) => {
                 StatusCode::NOT_FOUND
             },
-            GeocodingServiceError::RequestValidationError(_) => {
+            CacheServiceError::RequestValidationError(_) => {
                 StatusCode::BAD_REQUEST
-            }
+            },
             _ => StatusCode::INTERNAL_SERVER_ERROR
         };
         status_code

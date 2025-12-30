@@ -1,0 +1,6 @@
+FROM redis:8.4
+
+EXPOSE 6379
+
+ENTRYPOINT ["redis-server"]
+CMD ["/usr/local/etc/redis/redis.conf"]

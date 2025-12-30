@@ -145,14 +145,11 @@ impl CurrentWeatherService {
             return Err(AggregatorError::AmbiguousLocationNameError(candidates));
         }
 
-        if let Some(location) = errors.iter().find_map(|e| {
-            if let AggregatorError::LocationNotFoundError(location) = e {
-                Some(location.clone())
-            } else {
-                None
+        if !results.is_empty() && results.iter().all(|e| matches!(e.error, Some(AggregatorError::LocationNotFoundError(_)))) {
+            // Since we know all are LocationNotFoundError, we can just grab the first one
+            if let Some(AggregatorError::LocationNotFoundError(location)) = errors.first() {
+                return Err(AggregatorError::LocationNotFoundError(location.clone()));
             }
-        }) {
-            return Err(AggregatorError::LocationNotFoundError(location));
         }
 
         let strategy = CompositeStrategy {

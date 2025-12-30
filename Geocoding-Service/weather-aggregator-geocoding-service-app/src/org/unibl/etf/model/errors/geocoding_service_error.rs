@@ -19,6 +19,7 @@ impl GeocodingServiceError {
     pub fn get_sanitized_error(&self) -> GeocodingServiceError {
         match self {
             Self::LocationNotFoundError(s) => Self::LocationNotFoundError(s.clone()),
+            Self::RequestValidationError(s) => Self::RequestValidationError(s.clone()),
             _ => Self::ServerError(None),
         }
     }
@@ -49,6 +50,9 @@ impl GeocodingServiceError {
             },
             GeocodingServiceError::LocationNotFoundError(msg) => {
                 format!("Location with name {} not found", msg.clone().unwrap_or(String::default()))
+            },
+            GeocodingServiceError::RequestValidationError(msg) => {
+                msg.clone().unwrap_or(String::default())
             }
 
             _ => { String::default() }
@@ -58,7 +62,8 @@ impl GeocodingServiceError {
     pub fn as_numeric(&self) -> u16 {
         match self {
             GeocodingServiceError::LocationNotFoundError(_) => 1000,
-            _ => 1001,
+            GeocodingServiceError::RequestValidationError(_) => 1001,
+            _ => 1002,
         }
     }
 }
