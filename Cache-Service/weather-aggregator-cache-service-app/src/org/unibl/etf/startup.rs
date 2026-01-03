@@ -1,7 +1,6 @@
 use std::net::TcpListener;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use actix_web::dev::Server;
-use actix_web_opentelemetry::RequestTracing;
 use actix_web_validator::QueryConfig;
 use chrono::Utc;
 use tracing_actix_web::TracingLogger;

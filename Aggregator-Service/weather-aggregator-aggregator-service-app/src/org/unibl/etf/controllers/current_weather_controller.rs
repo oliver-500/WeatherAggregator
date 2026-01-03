@@ -23,17 +23,6 @@ async fn get_current_weather_data(
     cache_service_settings: web::Data<CacheServiceSettings>,
     current_weather_service: web::Data<CurrentWeatherService>
 ) -> Result<impl Responder, GenericServiceError> {
-
-    let context = tracing::Span::current().context();
-    let context_span = context.span();
-    let span_context = context_span.span_context();
-
-    if span_context.is_valid() {
-        println!("Service Trace ID: {}", span_context.trace_id());
-    } else {
-        println!("No valid Trace ID found in current span!");
-    }
-
     Ok(current_weather_service.get_current_weather_data(
         query.as_ref(),
         http_client.as_ref(),

@@ -13,14 +13,14 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("/current_weather").route(web::get().to(get_current_weather_data)));
 }
 
+#[tracing::instrument(name = "Get Current Weather Data Controller",
+    skip(http_client, current_weather_service, settings))]
 async fn get_current_weather_data(
     current_weather_service: web::Data<CurrentWeatherService>,
     query: Query<CurrentWeatherRequest>,
     http_client: web::Data<Client>,
     settings: web::Data<Settings>,
 ) -> Result<impl Responder, GenericServiceError> {
-
-    println!("lokacija: {:?}", query.as_ref());
     let res = current_weather_service
         .get_current_weather_by_coordinates_or_location_name(
             query.as_ref(),
@@ -28,14 +28,24 @@ async fn get_current_weather_data(
             &settings.provider
         )
         .await
-        .map_err(|e| GenericServiceError {
-            error: GenericServiceErrorDetails::new_adapter_error(&settings.provider.name, e)
+        .and_then(|res| {
+            tracing::info!("Successfully got current weather data from external API: {:?}", res);
+            Ok(res)
+        })
+        .map_err(|e| {
+            tracing::error!("Was not able to get current weather data by coordinates with error: {:?}", e.get_message());
+            GenericServiceError {
+                error: GenericServiceErrorDetails::new_adapter_error(&settings.provider.name, e)
+            }
         })?;
 
     Ok(UniformCurrentWeatherResponse::try_from(res)
         .and_then(|weather_data| Ok(HttpResponse::Ok().json(weather_data)))
-        .map_err(|e| GenericServiceError {
-            error: GenericServiceErrorDetails::new_adapter_error(&settings.provider.name, e)
+        .map_err(|e| {
+            tracing::error!("Was not able to get transform weather data to uniform format with error: {:?}", e.get_message());
+            GenericServiceError {
+                error: GenericServiceErrorDetails::new_adapter_error(&settings.provider.name, e)
+            }
         })?
     )
 

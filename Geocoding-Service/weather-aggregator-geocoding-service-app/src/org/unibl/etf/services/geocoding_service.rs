@@ -1,10 +1,12 @@
 use reqwest::StatusCode;
+
 use crate::org::unibl::etf::configuration::settings::{GeocodingAPISettings};
 use crate::org::unibl::etf::model::dto::location_candidate::LocationCandidate;
 use crate::org::unibl::etf::model::errors::geocoding_api_error::ExternalGeocodingApiError;
 use crate::org::unibl::etf::model::errors::geocoding_service_error::{GeocodingServiceError};
 use crate::org::unibl::etf::model::responses::geocoding_api_response::GeocodingAPIResponse;
 
+#[derive(Debug)]
 pub struct GeocodingService {
 
 }
@@ -14,6 +16,8 @@ impl GeocodingService {
         Self {
         }
     }
+
+    #[tracing::instrument(name = "Geocode Location Service", skip(client, settings))]
     pub async fn geocode_location(
         &self,
         location: &String,
@@ -21,7 +25,6 @@ impl GeocodingService {
         client: &reqwest::Client,
         settings: &GeocodingAPISettings
     ) -> Result<Vec<LocationCandidate>, GeocodingServiceError> {
-
         let response = client
             .get(settings.endpoint.clone())
             .query(&[
@@ -41,7 +44,7 @@ impl GeocodingService {
             let data: Vec<GeocodingAPIResponse> = serde_json::from_str(&body_text)
                 .map_err(|e| {
                     GeocodingServiceError::ResponseParsingError(Some(format!(
-                        "JSON Error: {} | Raw Body: {}",
+                        "Failed to parse Geocoding API success response body text. JSON Error: {} | Raw Body: {}",
                         e, body_text
                     )))
                 })?;
@@ -73,10 +76,11 @@ impl GeocodingService {
                         serde_json::from_str(&error_body_text)
                             .map_err(|e| {
                                 GeocodingServiceError::ResponseParsingError(Some(format!(
-                                    "JSON Error: {} | Raw Body: {}",
+                                    "Failed to parse Geocoding API error response body text. JSON Error: {} | Raw Body: {}",
                                     e, error_body_text
                                 )))
                             })?;
+                    tracing::error!("Geocoding API error while geocoding location: {:?}", error_body);
                     return Err(GeocodingServiceError::ExternalGeocodingApiError(error_body.cod, Some(error_body.message)));
                 },
                 _ => {

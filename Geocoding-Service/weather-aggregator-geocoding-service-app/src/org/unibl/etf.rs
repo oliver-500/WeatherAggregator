@@ -6,3 +6,5 @@ pub mod controllers;
 
 pub mod util;
 pub mod handlers;
+
+pub mod telemetry;

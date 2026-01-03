@@ -14,6 +14,8 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("/current_weather").route(web::get().to(get_current_weather_data)));
 }
 
+#[tracing::instrument(name = "Get Current Weather Data Controller",
+    skip(http_client, current_weather_service, geocoding_service, settings))]
 async fn get_current_weather_data(
     current_weather_service: web::Data<CurrentWeatherService>,
     geocoding_service: web::Data<GeocodingService>,
@@ -21,31 +23,30 @@ async fn get_current_weather_data(
     http_client: web::Data<Client>,
     settings: web::Data<Settings>,
 ) -> Result<impl Responder, GenericServiceError> {
-
-    //prvo geocode uz pomoc location_name
-
     let (lat, lon) = if query.lat == None || query.lon == None {
         match geocoding_service.geocode_location(
             query.location_name.clone().unwrap_or("".to_string()).as_str(),
             http_client.get_ref(),
             5,
             &settings.geocoding_service
-        )
-            .await
-        {
-            Ok((lat, lon)) => (lat, lon),
-            Err(e) => return Err(
-                GenericServiceError {
-                    error: GenericServiceErrorDetails::new_adapter_error(settings.provider.name.as_str(), e),
-                }
-            ),
+        ).await {
+            Ok((lat, lon)) => {
+                tracing::info!("Successfully geocoded location. Result: latitude {}, longitude {}", lat, lon);
+                (lat, lon)
+            },
+            Err(e) => return {
+                tracing::error!("Could not geocode location with error: {:?}", e);
+                Err(
+                    GenericServiceError {
+                        error: GenericServiceErrorDetails::new_adapter_error(settings.provider.name.as_str(), e),
+                    }
+                )
+            },
         }
     }
     else {
         (query.lat.unwrap_or(0.0), query.lon.unwrap_or(0.0))
     };
-
-
 
     let res = current_weather_service
         .get_current_weather_by_coordinates(
@@ -54,14 +55,25 @@ async fn get_current_weather_data(
             &settings.provider
         )
         .await
-        .map_err(|e| GenericServiceError {
-            error: GenericServiceErrorDetails::new_adapter_error(&settings.provider.name, e)
+        .and_then(|res| {
+            tracing::info!("Successfully got current weather data from external API: {:?}", res);
+            Ok(res)
+        }
+        )
+        .map_err(|e| {
+            tracing::error!("Was not able to get current weather data by coordinates with error: {:?}", e.get_message());
+            GenericServiceError {
+                error: GenericServiceErrorDetails::new_adapter_error(&settings.provider.name, e)
+            }
         })?;
 
     Ok(UniformCurrentWeatherResponse::try_from(res)
         .and_then(|weather_data| Ok(HttpResponse::Ok().json(weather_data)))
-        .map_err(|e| GenericServiceError {
-            error: GenericServiceErrorDetails::new_adapter_error(&settings.provider.name, e)
+        .map_err(|e| {
+            tracing::error!("Was not able to get transform weather data to uniform format with error: {:?}", e.get_message());
+            GenericServiceError {
+                error: GenericServiceErrorDetails::new_adapter_error(&settings.provider.name, e)
+            }
         })?
     )
 

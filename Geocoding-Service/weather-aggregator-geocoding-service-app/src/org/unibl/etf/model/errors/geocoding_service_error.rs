@@ -55,7 +55,7 @@ impl GeocodingServiceError {
                 msg.clone().unwrap_or(String::default())
             }
 
-            _ => { String::default() }
+            // _ => { String::default() }
         }
     }
 

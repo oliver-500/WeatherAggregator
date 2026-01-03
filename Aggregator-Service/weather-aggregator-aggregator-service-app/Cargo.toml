@@ -30,7 +30,7 @@ tracing-opentelemetry = "0.31.0"
 opentelemetry = "0.30.0"
 opentelemetry-otlp = { version = "0.30.0", features = ["tonic", "grpc-tonic", "tls-roots"] }
 opentelemetry_sdk = { version = "0.30.0", features = ["experimental_trace_batch_span_processor_with_async_runtime"] }
-actix-web-opentelemetry = { version = "0.22"}
+tracing-actix-web = { version = "0.7", features = ["opentelemetry_0_30"] }
 reqwest-middleware = { version = "0.4.2", features = ["json"] }
 reqwest-tracing = { version = "0.5.8", features = ["opentelemetry_0_30"] }
 async-trait = "0.1.89"

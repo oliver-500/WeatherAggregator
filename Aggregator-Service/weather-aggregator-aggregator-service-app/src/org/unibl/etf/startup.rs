@@ -2,7 +2,6 @@
 use std::net::TcpListener;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use actix_web::dev::Server;
-use actix_web_opentelemetry::RequestTracing;
 use actix_web_validator::QueryConfig;
 use chrono::Utc;
 
@@ -28,6 +27,7 @@ use async_trait::async_trait;
 use http::Extensions;
 use reqwest::Request;
 use reqwest_middleware::{Middleware, Next, Result};
+use tracing_actix_web::TracingLogger;
 
 struct LogHeaders;
 
@@ -71,7 +71,7 @@ pub fn run(
             .app_data(providers_settings.clone())
             .app_data(cache_service_settings.clone())
             .app_data(QueryConfig::default().error_handler(query_error_handler::handle_validation_error))
-            .wrap(RequestTracing::new())
+            .wrap(TracingLogger::default())
             .service(
                 web::scope("/api/v1")
                     .configure(current_weather_controller::routes)

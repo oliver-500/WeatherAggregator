@@ -8,7 +8,7 @@ pub struct CurrentWeatherRequestRaw {
     pub lon: Option<f64>,
 }
 
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, Validate, Debug)]
 #[serde(try_from = "CurrentWeatherRequestRaw")]
 pub struct CurrentWeatherRequest {
     pub location_name: Option<String>,

@@ -3,6 +3,7 @@ use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use actix_web::dev::Server;
 use actix_web_validator::QueryConfig;
 use chrono::Utc;
+use tracing_actix_web::TracingLogger;
 use crate::org::unibl::etf::configuration::settings::{Settings};
 use crate::org::unibl::etf::controllers::current_weather_controller;
 use crate::org::unibl::etf::handlers::query_error_handler;
@@ -39,7 +40,7 @@ pub fn run(
             .app_data(geocoding_service.clone())
             .app_data(current_weather_service.clone())
             .app_data(settings.clone())
-
+            .wrap(TracingLogger::default())
             .app_data(QueryConfig::default()
                 .error_handler(query_error_handler::handle_validation_error)
             )

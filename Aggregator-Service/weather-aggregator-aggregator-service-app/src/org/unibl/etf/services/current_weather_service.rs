@@ -38,13 +38,10 @@ impl CurrentWeatherService {
 
         let url = format!("http://{}:{}/api/v1/current_weather", cache_service_settings.host, cache_service_settings.port);
 
-        let span = tracing::Span::current();
-
         let response = client
             .get(url)
             .query(&params)
             .send()
-            .instrument(span)
             .await
             .map_err(|e| AggregatorError::ConnectionError(Some(e.to_string())))?;
 

@@ -11,6 +11,8 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("/geocode").route(web::get().to(get_coordinates_by_city_name)));
 }
 
+#[tracing::instrument(name = "Get Coordinates by City name Controller",
+    skip(http_client, geocoding_service, settings))]
 async fn get_coordinates_by_city_name(
     geocoding_service: web::Data<GeocodingService>,
     query: Query<GeocodingRequest>,
@@ -26,16 +28,18 @@ async fn get_coordinates_by_city_name(
         )
         .await
         .and_then(|candidates| {
-            println!("{:?}", candidates);
+            tracing::info!("Successfully geocoded location with result: {:?}", candidates);
             Ok(HttpResponse::Ok().json(
             GeocodingResponse {
-                candidates: candidates,
+                candidates,
             }
-
         )
         )})
-        .map_err(|e| GenericServiceError {
-            error: GenericServiceErrorDetails::new_geocoding_error(e)
+        .map_err(|e| {
+            tracing::error!("Was not able to geocode location with error: {:?}", e);
+            GenericServiceError {
+                error: GenericServiceErrorDetails::new_geocoding_error(e)
+            }
         })?
     )
 }

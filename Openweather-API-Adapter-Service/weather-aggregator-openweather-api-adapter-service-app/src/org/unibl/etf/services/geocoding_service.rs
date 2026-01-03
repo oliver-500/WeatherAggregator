@@ -6,6 +6,7 @@ use crate::org::unibl::etf::model::errors::adapter_service_error::AdapterService
 use crate::org::unibl::etf::model::errors::geocoding_error::{GeocodingGenericError};
 use crate::org::unibl::etf::model::responses::geocoding_response::GeocodingResponse;
 
+#[derive(Debug)]
 pub struct GeocodingService {
 
 }
@@ -16,6 +17,8 @@ impl GeocodingService {
         Self {
         }
     }
+
+    #[tracing::instrument(name = "Geocode Location Service", skip(client, settings))]
     pub async fn geocode_location(
         &self,
         location: &str,
@@ -40,24 +43,22 @@ impl GeocodingService {
                 AdapterServiceError::ServerError(Some(e.to_string()))
             })?;
 
-
-            println!("{}", body_text);
-
             let data: GeocodingResponse = serde_json::from_str(&body_text)
                 .map_err(|e| {
                     AdapterServiceError::GeocodingResponseParsingError(Some(format!(
-                        "JSON Error: {} | Raw Body: {}",
+                        "Failed to parse Geocoding Service success body response. JSON Error: {} | Raw Body: {}",
                         e, body_text
                     )))
                 })?;
 
             if data.candidates.len() == 0 {
-                println!("No candidates");
+                tracing::error!("No candidates for geocoding found in response.");
                 return Err(AdapterServiceError::LocationNotFoundError(Some(location.to_string())));
             } else if data.candidates.len() == 1 {
                 let geocoding_response = data.candidates.get(0).unwrap();
                 return Ok((geocoding_response.lat, geocoding_response.lon));
             } else {
+                tracing::info!("Found multiple possible geocoding candidates for location found in request.");
                 return Err(AdapterServiceError::AmbiguousLocationNameError(data.candidates));
             }
         }
@@ -73,21 +74,18 @@ impl GeocodingService {
                         AdapterServiceError::ServerError(Some(e.to_string()))
                     })?;
 
-                    println!("{}", error_body_text);
-
                     let error_body: GeocodingGenericError =
                         serde_json::from_str(&error_body_text)
                             .map_err(|e| {
-                                // This 'e' will now contain the EXACT field and line number
+
                                 AdapterServiceError::GeocodingResponseParsingError(Some(format!(
-                                    "JSON Error: {} | Raw Body: {}",
+                                    "Failed to parse Geocoding Service error response body. JSON Error: {} | Raw Body: {}",
                                     e, error_body_text
                                 )))
                             })?;
+                    tracing::error!("Geocoding Service while trying to geocode location");
 
                     return Err(AdapterServiceError::from(error_body.error.code));
-
-
                 },
                 _ => {
                     return Err(AdapterServiceError::GeocodingServiceError(status.as_u16(), None));
