@@ -7,3 +7,5 @@ pub mod util;
 pub mod startup;
 
 pub mod strategy;
+
+pub mod telemetry;

@@ -23,11 +23,13 @@ pub struct Location {
     pub name: Option<String>,
     pub country: Option<String>,
 
-    #[serde(deserialize_with = "deserialize_f64_or_empty_string_as_none")]
-    pub lat: Option<f64>,
+    // #[serde(deserialize_with = "deserialize_f64_or_empty_string_as_none")]
+    // pub lat: Option<f64>,
+    pub lat: f64,
 
-    #[serde(deserialize_with = "deserialize_f64_or_empty_string_as_none")]
-    pub lon: Option<f64>,
+    // #[serde(deserialize_with = "deserialize_f64_or_empty_string_as_none")]
+    // pub lon: Option<f64>,
+    pub lon: f64
 }
 
 #[derive(Deserialize, Debug, Serialize, Clone)]

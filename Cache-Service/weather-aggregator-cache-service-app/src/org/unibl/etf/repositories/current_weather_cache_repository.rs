@@ -3,12 +3,13 @@ use deadpool_redis::redis::{AsyncCommands, RedisResult};
 
 use geohash::{encode, Coord};
 use crate::org::unibl::etf::model::errors::cache_service_error::CacheServiceError;
+use crate::org::unibl::etf::model::requests::store_current_weather_data_request::StoreCurrentWeatherDataRequest;
 
-use crate::org::unibl::etf::model::responses::current_weather_cache_response::CurrentWeatherCacheResponse;
 
 
 #[derive(Debug)]
 pub struct CurrentWeatherRepository {}
+
 
 
 
@@ -17,6 +18,7 @@ impl CurrentWeatherRepository {
         Self {}
     }
 
+    #[tracing::instrument(name = "Get Current Weather Cached Data Repository", skip(redis_pool))]
     pub async fn get_current_weather_cache_result(
         &self,
         lat: f64,
@@ -31,7 +33,7 @@ impl CurrentWeatherRepository {
             }
         };
         let coord = Coord { x: lon, y: lat };
-        let hash = encode(coord, 6).expect("Invalid coordinates");
+        let hash = encode(coord, 5).expect("Invalid coordinates");
         let cache_key = format!("weather:current:{}", hash);
 
         // 2. Attempt to get from Redis
@@ -46,9 +48,10 @@ impl CurrentWeatherRepository {
 
     }
 
+    #[tracing::instrument(name = "Store Current Weather Cache Data Repository", skip(redis_pool))]
     pub async fn store_current_weather_result_as_cache(
         &self,
-        data: &CurrentWeatherCacheResponse,
+        data: &StoreCurrentWeatherDataRequest,
         redis_pool: &deadpool_redis::Pool,
     )-> Result<bool, CacheServiceError> {
         let mut conn = match redis_pool.get().await {
@@ -59,17 +62,22 @@ impl CurrentWeatherRepository {
             }
         };
 
-        let coord = Coord { x: data.location.lon.unwrap(), y: data.location.lat.unwrap() }; //da nikad ne bude none!!!
-        let hash = encode(coord, 6).expect("Invalid coordinates"); //kao env
+        let coord = Coord { x: data.lon, y: data.lat }; //da nikad ne bude none!!!
+        let hash = encode(coord, 5).expect("Invalid coordinates"); //kao env
         let cache_key = format!("weather:current:{}", hash);
-        let json = serde_json::to_string(data).unwrap();
+        let json = serde_json::to_string(&data.current_weather_data).unwrap();
 
         let result: RedisResult<()> = conn.set_ex(cache_key, json, 1800).await;
 
+
         match result {
-            Ok(_) => Ok(true),
+            Ok(_) => {
+                tracing::info!("Successfully stored current weather data to redis store.");
+                Ok(true)
+            },
             Err(e) => {
-                return Err(CacheServiceError::ConnectionError(Some(e.to_string())));
+                tracing::error!("Failed to store current weather data to redis store.");
+                return Err(CacheServiceError::StoringCacheError(Some(e.to_string())));
             }
         }
     }

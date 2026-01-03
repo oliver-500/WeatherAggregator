@@ -6,12 +6,12 @@ use serde::{Serialize};
 
 use crate::org::unibl::etf::model::errors::aggregator_error::AggregatorError;
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct GenericServiceError {
     pub error: GenericServiceErrorDetails,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct GenericServiceErrorDetails {
     pub code: AggregatorError,
     pub code_numeric: u16,
@@ -61,8 +61,15 @@ impl error::ResponseError for GenericServiceError {
     }
 
     fn error_response(&self) -> HttpResponse {
+        let mut sanitized_details = self.error.clone();
+
+        // 2. Sanitize the clone
+        sanitized_details.code = sanitized_details.code.get_sanitized_error();
+
         HttpResponse::build(self.status_code())
-            .json(&self)
+            .json(GenericServiceError {
+                error: sanitized_details,
+            })
     }
 }
 

@@ -1,2 +1,3 @@
 pub mod upstream_current_weather_request;
 pub mod downstream_current_weather_request;
+pub mod store_current_weatcher_cache_request;

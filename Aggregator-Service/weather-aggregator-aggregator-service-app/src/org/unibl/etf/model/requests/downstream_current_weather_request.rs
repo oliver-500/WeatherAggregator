@@ -30,13 +30,13 @@ impl TryFrom<&UpstreamCurrentWeatherRequest> for DownstreamCurrentWeatherRequest
             lon: req.lon,
             location_name: req.location_name.clone(),
             limit: req.limit,
-            provider: Some(default_provider()), // !!!ucitati const iz env
+            provider: Some("".to_string()),
         })
     }
 }
 
 
 
-fn default_provider() -> String {
-    "weatherapi.com".to_owned()
-}
+// fn default_provider() -> String {
+//     "weatherapi.com".to_owned()
+// }

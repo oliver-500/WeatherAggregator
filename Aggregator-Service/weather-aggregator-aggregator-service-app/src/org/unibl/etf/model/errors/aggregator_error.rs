@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use crate::org::unibl::etf::model::errors::cache_service_error::CacheError;
 use crate::org::unibl::etf::model::errors::external_api_adapter_error_message::{AdapterError, LocationCandidate};
 
 #[derive(Serialize, Debug, Clone, Deserialize)]
@@ -11,6 +12,8 @@ pub enum AggregatorError {
     ConnectionError(Option<String>),
     ResponseParsingError(Option<String>),
     WeatherDataUnavailableError,
+    CacheMissError(f64, f64),
+    StoringCacheError(Option<String>),
 
 }
 
@@ -36,7 +39,9 @@ impl AggregatorError {
             AggregatorError::LocationNotFoundError(s) => format!("LocationNotFoundError: {}", s.clone().unwrap_or(String::from(""))),
             AggregatorError::WeatherDataUnavailableError => {
                 String::from("No provider could return weather data")
-            }
+            },
+            //AggregatorError::ServerError(s) => format!("ServerError: {}", s.clone().unwrap_or(String::from(""))),
+            AggregatorError::ResponseParsingError(s) => format!("ResponseParsingError: {}", s.clone().unwrap_or(String::from(""))),
             _ => { String::default() }
         }
     }
@@ -56,6 +61,9 @@ impl AggregatorError {
             AggregatorError::WeatherDataUnavailableError => {
                 404
             }
+            _ => {
+                500
+            }
         }
     }
 }
@@ -74,6 +82,25 @@ impl From<AdapterError> for AggregatorError {
                 AggregatorError::ServerError(None)
             }
 
+        }
+    }
+}
+
+impl From<CacheError> for AggregatorError {
+    fn from(code: CacheError) -> Self {
+        match code {
+            CacheError::CacheMissError(lat, lon) => {
+                AggregatorError::CacheMissError(lat, lon)
+            }
+            CacheError::RequestValidationError(s) => {
+                AggregatorError::RequestParametersValidationError(s)
+            }
+            CacheError::ServerError => {
+                AggregatorError::ServerError(None)
+            },
+            CacheError::StoringCacheError(s) => {
+                AggregatorError::StoringCacheError(s)
+            }
         }
     }
 }

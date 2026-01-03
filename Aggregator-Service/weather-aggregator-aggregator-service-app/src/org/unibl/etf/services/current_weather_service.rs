@@ -1,17 +1,23 @@
 use futures::future::join_all;
+use reqwest_middleware::ClientWithMiddleware;
+use tracing::Instrument;
 use crate::org::unibl::etf::model::errors::aggregator_error::AggregatorError;
-use crate::org::unibl::etf::configuration::settings::ProviderSettings;
+use crate::org::unibl::etf::configuration::settings::{CacheServiceSettings, ProviderSettings};
+use crate::org::unibl::etf::model::errors::cache_service_error::CacheServiceError;
 use crate::org::unibl::etf::model::errors::external_api_adapter_error_message::AdapterServiceError;
 use crate::org::unibl::etf::model::requests::downstream_current_weather_request::DownstreamCurrentWeatherRequest;
+use crate::org::unibl::etf::model::requests::store_current_weatcher_cache_request::StoreCurrentWeatherDataRequest;
 use crate::org::unibl::etf::model::requests::upstream_current_weather_request::UpstreamCurrentWeatherRequest;
 use crate::org::unibl::etf::model::responses::current_weather_response::CurrentWeatherResponse;
 use crate::org::unibl::etf::strategy::composite_strategy::CompositeStrategy;
 use crate::org::unibl::etf::strategy::priority_strategy::PriorityStrategy;
 use crate::org::unibl::etf::strategy::weather_strategy::WeatherStrategy;
 
+#[derive(Debug)]
 pub struct CurrentWeatherService {
 
 }
+
 
 impl CurrentWeatherService {
     fn new() -> Self {
@@ -19,27 +25,100 @@ impl CurrentWeatherService {
         }
     }
 
+    #[tracing::instrument(name = "Get Cached Current Weather Data Function", skip(client, cache_service_settings))]
+    pub async fn get_cached_current_weather_data(
+        &self,
+        req: &DownstreamCurrentWeatherRequest,
+        client: &ClientWithMiddleware,
+        cache_service_settings: &CacheServiceSettings,
+    ) -> Result<CurrentWeatherResponse, AggregatorError> {
+        let mut params = Vec::new();
+        params.push(("lat", req.lat.unwrap().to_string()));
+        params.push(("lon", req.lon.unwrap().to_string()));
+
+        let url = format!("http://{}:{}/api/v1/current_weather", cache_service_settings.host, cache_service_settings.port);
+
+        let span = tracing::Span::current();
+
+        let response = client
+            .get(url)
+            .query(&params)
+            .send()
+            .instrument(span)
+            .await
+            .map_err(|e| AggregatorError::ConnectionError(Some(e.to_string())))?;
+
+            if response.status().is_success() {
+                let body_text = response.text()
+                    .await
+                    .map_err(|e| AggregatorError::ServerError(
+                        Some(format!("Failed to get Cache Service success response body text: {}", e))
+                    ))?;
+
+                let res: CurrentWeatherResponse = serde_json::from_str(&body_text)
+                    .map_err(|e| {
+                        AggregatorError::ResponseParsingError(Some(format!(
+                            "Failed to parse Cache Service success response: JSON Error: {} | Raw Body: {}",
+                            e, body_text
+                        )))
+                    })?;
+
+                Ok(res)
+            } else {
+                let error_body_text = response.text().await.map_err(|e| {
+                    AggregatorError::ServerError(Some(format!("Failed to get Cache Service error response body text: {}", e)))
+                })?;
+
+                let error_body: CacheServiceError = serde_json::from_str(&error_body_text)
+                    .map_err(|e| {
+                        AggregatorError::ResponseParsingError(Some(format!(
+                            "Failed to parse Cache Service error response. JSON Error: {} | Raw Body: {}",
+                            e, error_body_text
+                        )))
+                    })?;
+                tracing::info!("Cache Service Error while trying to get current weather cached data with error response: {:?}", error_body);
+
+                Err(AggregatorError::from(error_body.error.code))
+            }
+    }
+
+    #[tracing::instrument(name = "Get Current Weather Data Service", skip(client, cache_service_settings, providers_settings))]
     pub async fn get_current_weather_data(
         &self,
         request: &UpstreamCurrentWeatherRequest,
-        client: &reqwest::Client,
+        client: &ClientWithMiddleware,
         providers_settings: &Vec<ProviderSettings>,
+        cache_service_settings: &CacheServiceSettings,
     ) -> Result<CurrentWeatherResponse, AggregatorError> {
 
-        let req = DownstreamCurrentWeatherRequest::try_from(request).map_err(|_e| AggregatorError::ServerError(None))?;
+        let req = DownstreamCurrentWeatherRequest::try_from(request)
+            .map_err(|e| AggregatorError::ServerError(Some(e.to_string())))?;
 
-        //provjeriti cache
-        //ako se desi cache miss slati zahtjeve na oba endpointa za temp
+        if req.lat.is_some() || req.lon.is_some() {
+            match self.get_cached_current_weather_data(
+                &req,
+                client,
+                cache_service_settings,
+            ).await {
+                Ok(current_weather_data) => {
+                    tracing::info!("Cache hit while getting current weather data. {:?}", current_weather_data);
+                    return Ok(current_weather_data)
+                },
+                Err(e) => {
+                    tracing::info!("Was not able to get current weather cached data: {}", e.get_message());
+                }
+            }
+        }
+        else {
+            tracing::info!("Not checking for current weather cached data since latitude and longitude are not provided in the request.")
+        }
 
         let request_futures = providers_settings.iter().map(|provider| {
-            let client = client.clone(); // reqwest::Client is an Arc internally, so cloning is cheap
+            let client = client.clone();
             let req = req.clone();
 
-            println!("op");
-            // We move the async block into the collection
             async move {
                 let url = format!("http://{}:{}/api/v1/current_weather", provider.host, provider.port);
-
                 let mut params = Vec::new();
 
                 if let Some(lat) = req.lat {
@@ -54,7 +133,6 @@ impl CurrentWeatherService {
                     }
                 }
 
-                println!("op2");
                 let response = client
                     .get(url)
                     .query(&params)
@@ -62,57 +140,51 @@ impl CurrentWeatherService {
                     .await
                     .map_err(|e| AggregatorError::ConnectionError(Some(e.to_string())))?; //kasnije ukloniti poruku
 
-                // Note: You probably want to deserialize here too
                 if response.status().is_success() {
                     let body_text = response.text()
                         .await
                         .map_err(|e| AggregatorError::ServerError(
-                            Some(format!("Failed to get success body text: {}", e))
+                            Some(format!("Failed to get {} Adapter Service success response body text: {}", provider.name, e))
                         ))?;
 
-                    println!("op5");
                     let res: CurrentWeatherResponse = serde_json::from_str(&body_text)
                         .map_err(|e| {
                             AggregatorError::ResponseParsingError(Some(format!(
-                                "Failed to parse response: JSON Error: {} | Raw Body: {}",
-                                e, body_text
+                                "Failed to parse {} Adapter Service success response: JSON Error: {} | Raw Body: {}",
+                                provider.name, e, body_text
                             )))
                         })?;
 
                     return Ok(res);
                 } else {
                     let error_body_text = response.text().await.map_err(|e| {
-                        AggregatorError::ServerError(Some(format!("Failed to get error body text: {}", e)))
+                        AggregatorError::ServerError(
+                            Some(format!("Failed to get {} Adapter Service error body text: {}", provider.name, e))
+                        )
                     })?;
 
                     let error_body: AdapterServiceError = serde_json::from_str(&error_body_text)
                         .map_err(|e| {
                             // This 'e' will now contain the EXACT field and line number
                             AggregatorError::ResponseParsingError(Some(format!(
-                                "JSON Error: {} | Raw Body: {}",
-                                e, error_body_text
+                                "Failed to parse {} Adapter Service success response: JSON Error: {} | Raw Body: {}",
+                                provider.name, e, error_body_text
                             )))
                         })?;
-                    println!("Response: {:?}",  error_body);
 
                     Err(AggregatorError::from(error_body.error.code))
                 }
             }
         });
 
-        // 2. Execute all futures concurrently
-        // join_all returns a Vec<Result<...>> in the same order as the providers
         let results = join_all(request_futures).await;
-
-
-        // 3. Process the results
 
         let results: Vec<WeatherProviderResult> =
             results.into_iter().enumerate().map(|(index, res)| {
                 let provider = providers_settings[index].name.clone();
                 match res {
                     Ok(data) => {
-                        println!("Success from provider: {}, response: {:?}", providers_settings[index].name, data);
+                        tracing::info!("Success from provider: {}, response: {:?}", providers_settings[index].name, data);
                         WeatherProviderResult {
                             provider,
                             data: Some(data),
@@ -120,7 +192,7 @@ impl CurrentWeatherService {
                         }
                     },
                     Err(e) => {
-                        println!("Error from provider {}: {}", providers_settings[index].name, e.get_message());
+                        tracing::error!("Error from provider {}: {}", providers_settings[index].name, e.get_message());
                         WeatherProviderResult {
                             provider,
                             data: None,
@@ -130,11 +202,7 @@ impl CurrentWeatherService {
                 }
             }).collect();
 
-
-
-
         let errors: Vec<&AggregatorError> = results.iter().filter_map(|r| r.error.as_ref()).collect();
-
         if let Some(candidates) = errors.iter().find_map(|e| {
             if let AggregatorError::AmbiguousLocationNameError(candidates) = e {
                 Some(candidates.clone())
@@ -146,7 +214,6 @@ impl CurrentWeatherService {
         }
 
         if !results.is_empty() && results.iter().all(|e| matches!(e.error, Some(AggregatorError::LocationNotFoundError(_)))) {
-            // Since we know all are LocationNotFoundError, we can just grab the first one
             if let Some(AggregatorError::LocationNotFoundError(location)) = errors.first() {
                 return Err(AggregatorError::LocationNotFoundError(location.clone()));
             }
@@ -158,7 +225,6 @@ impl CurrentWeatherService {
                 order: vec!["openweathermap.org".into(), "weatherapi.com".into()],
             },
         };
-
         let final_weather_result = strategy.resolve(&results);
 
         match final_weather_result {
@@ -166,8 +232,63 @@ impl CurrentWeatherService {
                 Err(AggregatorError::WeatherDataUnavailableError)
             }
             Some(res) => {
+                let store_request = StoreCurrentWeatherDataRequest {
+                    current_weather_data: res.clone(),
+                    lat: req.lat.unwrap_or(res.location.lat),
+                    lon: req.lon.unwrap_or(res.location.lon)
+                };
+
+                match self.save_current_weather_data_to_cache(
+                    client,
+                    cache_service_settings,
+                    &store_request
+                ).await {
+                    Ok(_) => {
+                        println!("Successfully saved current weather data to cache.");
+                    },
+                    Err(e) => {
+                        println!("Error saving current weather data to cache with error: {}", e.get_message());
+                    }
+                }
                 Ok(res)
             }
+        }
+    }
+
+    #[tracing::instrument(name = "Send Current Weather Data to Cache Service function", skip(client, cache_service_settings))]
+    pub async fn save_current_weather_data_to_cache(
+        &self,
+        client: &ClientWithMiddleware,
+        cache_service_settings: &CacheServiceSettings,
+        data: &StoreCurrentWeatherDataRequest,
+    ) -> Result<bool, AggregatorError> {
+        let url = format!("http://{}:{}/api/v1/current_weather", cache_service_settings.host, cache_service_settings.port);
+
+        let response = client
+            .put(url)
+            .json(&data)
+            .send()
+            .await
+            .map_err(|e| AggregatorError::ConnectionError(Some(e.to_string())))?;
+
+        if response.status().is_success() {
+            Ok(true)
+        } else {
+            let error_body_text = response.text().await.map_err(|e| {
+                AggregatorError::ServerError(Some(format!("Failed to get error body text: {}", e)))
+            })?;
+
+            let error_body: CacheServiceError = serde_json::from_str(&error_body_text)
+                .map_err(|e| {
+                    // This 'e' will now contain the EXACT field and line number
+                    AggregatorError::ResponseParsingError(Some(format!(
+                        "Error parsing Cache Service error response: JSON Error: {} | Raw Body: {}",
+                        e, error_body_text
+                    )))
+                })?;
+            tracing::error!("Cache Service Error while trying to save current weather data to cache with error response: {:?}", error_body);
+
+            Err(AggregatorError::from(error_body.error.code))
         }
     }
 }

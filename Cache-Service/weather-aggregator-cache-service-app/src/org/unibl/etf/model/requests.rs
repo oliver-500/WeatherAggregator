@@ -1,1 +1,2 @@
 pub mod current_weather_cache_request;
+pub mod store_current_weather_data_request;

@@ -1,9 +1,11 @@
 
 use crate::org::unibl::etf::model::errors::cache_service_error::{CacheServiceError};
 use crate::org::unibl::etf::model::requests::current_weather_cache_request::CurrentWeatherCacheRequest;
+use crate::org::unibl::etf::model::requests::store_current_weather_data_request::StoreCurrentWeatherDataRequest;
 use crate::org::unibl::etf::model::responses::current_weather_cache_response::{CurrentWeatherCacheResponse};
 use crate::org::unibl::etf::repositories::current_weather_cache_repository::CurrentWeatherRepository;
 
+#[derive(Debug)]
 pub struct CacheService {
     current_weather_repository: CurrentWeatherRepository
 }
@@ -14,6 +16,8 @@ impl CacheService {
             current_weather_repository: CurrentWeatherRepository::default()
         }
     }
+
+    #[tracing::instrument(name = "Get Current Weather Cached Data Service", skip(redis_pool))]
     pub async fn get_current_weather_cached_result(
         &self,
         req: &CurrentWeatherCacheRequest,
@@ -28,15 +32,18 @@ impl CacheService {
             )
             .await {
             Ok(cached_data) => {
+                tracing::info!("Succesfully retrieved current weather cache data {:?}", cached_data);
                 cached_data
             },
             Err(e) => {
+                tracing::info!("Was not able to get current weather cache data with error: {}", e.get_message());
                 return Err(e);
             }
         };
 
         let cached_data_json = match cached_data {
             None => {
+                tracing::info!("Cache miss. No cached weather data for such request");
                 return Err(CacheServiceError::CacheMissError(req.lat, req.lon));
             }
             Some(json) => {
@@ -56,9 +63,11 @@ impl CacheService {
     }
 
 
+    #[tracing::instrument(name = "Store Current Weather Data Cache Service",
+        skip(redis_pool))]
     pub async fn store_current_weather_result_as_cache (
         &self,
-        req: &CurrentWeatherCacheResponse,
+        req: &StoreCurrentWeatherDataRequest,
         redis_pool: &deadpool_redis::Pool,
     ) -> Result<bool, CacheServiceError>
     {

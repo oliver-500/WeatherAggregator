@@ -9,6 +9,7 @@ pub enum CacheServiceError {
     CacheMissError(f64, f64),
     RequestValidationError(Option<String>),
     RedisError(Option<String>, Option<String>),
+    StoringCacheError(Option<String>),
 }
 
 
@@ -31,6 +32,7 @@ impl CacheServiceError {
             Self::CacheMissError(_, _) => "CACHE_MISS_ERROR",
             Self::RequestValidationError(_) => "REQUEST_VALIDATION_ERROR",
             Self::RedisError(_, _) => "REDIS_ERROR",
+            Self::StoringCacheError(_) => "STORING_CACHE_ERROR",
         }
     }
 
@@ -57,7 +59,7 @@ impl CacheServiceError {
             CacheServiceError::ConnectionError(_) => 1003,
             CacheServiceError::ResponseParsingError(_) => 1004,
             CacheServiceError::RedisError(_, _) => 1005,
-            _ => 1006,
+            CacheServiceError::StoringCacheError(_) => 1007,
         }
     }
 }
