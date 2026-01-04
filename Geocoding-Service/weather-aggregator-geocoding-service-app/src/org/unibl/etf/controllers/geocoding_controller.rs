@@ -12,19 +12,21 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
 }
 
 #[tracing::instrument(name = "Get Coordinates by City name Controller",
-    skip(http_client, geocoding_service, settings))]
+    skip(http_client, geocoding_service, settings, redis_pool))]
 async fn get_coordinates_by_city_name(
     geocoding_service: web::Data<GeocodingService>,
     query: Query<GeocodingRequest>,
     http_client: web::Data<Client>,
-    settings: web::Data<GeocodingAPISettings>
+    settings: web::Data<GeocodingAPISettings>,
+    redis_pool: web::Data<deadpool_redis::Pool>
 ) -> Result<impl Responder, GenericServiceError> {
     Ok(geocoding_service
         .geocode_location(
             &query.location_name,
             query.limit.unwrap(),
             http_client.get_ref(),
-            settings.get_ref()
+            settings.get_ref(),
+            redis_pool.get_ref(),
         )
         .await
         .and_then(|candidates| {

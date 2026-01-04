@@ -1,4 +1,5 @@
 use reqwest::StatusCode;
+use reqwest_middleware::ClientWithMiddleware;
 use crate::org::unibl::etf::configuration::settings::{ProviderSettings};
 use crate::org::unibl::etf::model::errors::openweather_api_error::{OpenWeatherAPIError};
 use crate::org::unibl::etf::model::errors::adapter_service_error::{AdapterServiceError};
@@ -20,7 +21,7 @@ impl CurrentWeatherService {
     pub async fn get_current_weather_by_coordinates(
         &self,
         (lat, lon): (f64, f64),
-        client: &reqwest::Client,
+        client: &ClientWithMiddleware,
         settings: &ProviderSettings
     ) -> Result<OpenWeatherAPICurrentWeatherResponse, AdapterServiceError> {
         let response = client.get(format!("{}/{}", settings.base_api_url, settings.current_weather_endpoint).as_str())

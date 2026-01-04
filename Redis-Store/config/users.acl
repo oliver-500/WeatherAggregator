@@ -1,4 +1,6 @@
 user default off
 
-user weather_aggregator_cache_service_app on >34jewsdfe34564 ~weather:* +@string +expire +get +set +setex +scan +info
+user weather_aggregator_cache_service_app on >34jewsdfe34564 ~weather:* +@string +expire +get +set +setex +scan +info +config +monitor
+
+user weather_aggregator_geocoding_service_app on >80jsgb3402jfpq ~provider:* +@string +expire +get +set +setex +scan +info +incr +multi +monitor +config
 

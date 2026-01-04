@@ -46,6 +46,9 @@ impl error::ResponseError for GenericServiceError {
             },
             GeocodingServiceError::RequestValidationError(_) => {
                 StatusCode::BAD_REQUEST
+            },
+            GeocodingServiceError::RateLimitExceeded => {
+                StatusCode::TOO_MANY_REQUESTS
             }
             _ => StatusCode::INTERNAL_SERVER_ERROR
         };

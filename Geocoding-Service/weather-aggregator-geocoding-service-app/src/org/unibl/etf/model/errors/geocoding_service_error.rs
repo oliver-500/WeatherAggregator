@@ -10,6 +10,8 @@ pub enum GeocodingServiceError {
     ExternalGeocodingApiError(u16, Option<String>),
     LocationNotFoundError(Option<String>),
     RequestValidationError(Option<String>),
+    RateLimitExceeded,
+    RedisError(Option<String>, Option<String>),
 }
 
 
@@ -20,6 +22,7 @@ impl GeocodingServiceError {
         match self {
             Self::LocationNotFoundError(s) => Self::LocationNotFoundError(s.clone()),
             Self::RequestValidationError(s) => Self::RequestValidationError(s.clone()),
+            Self::RateLimitExceeded => Self::RateLimitExceeded,
             _ => Self::ServerError(None),
         }
     }
@@ -32,6 +35,8 @@ impl GeocodingServiceError {
             Self::ExternalGeocodingApiError(_, _) => "EXTERNAL_GEOCODING_API_ERROR",
             Self::LocationNotFoundError(_) => "LOCATION_NOT_FOUND_ERROR",
             Self::RequestValidationError(_) => "REQUEST_VALIDATION_ERROR",
+            Self::RateLimitExceeded => "REQUEST_RATE_LIMIT EXCEEDED",
+            Self::RedisError(_, _) => "REDIS_ERROR",
         }
     }
 
@@ -53,7 +58,11 @@ impl GeocodingServiceError {
             },
             GeocodingServiceError::RequestValidationError(msg) => {
                 msg.clone().unwrap_or(String::default())
-            }
+            },
+            GeocodingServiceError::RateLimitExceeded => {
+                format!("Rate limit exceeded for geocoding provider")
+            },
+            GeocodingServiceError::RedisError(_, msg) => msg.clone().unwrap_or(String::default()),
 
             // _ => { String::default() }
         }
@@ -63,7 +72,9 @@ impl GeocodingServiceError {
         match self {
             GeocodingServiceError::LocationNotFoundError(_) => 1000,
             GeocodingServiceError::RequestValidationError(_) => 1001,
-            _ => 1002,
+            GeocodingServiceError::RateLimitExceeded => 1002,
+            GeocodingServiceError::RedisError(_, _) => 1003,
+            _ => 1004,
         }
     }
 }

@@ -3,6 +3,8 @@ use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use actix_web::dev::Server;
 use actix_web_validator::QueryConfig;
 use chrono::Utc;
+use reqwest_middleware::ClientBuilder;
+use reqwest_tracing::TracingMiddleware;
 use tracing_actix_web::TracingLogger;
 use crate::org::unibl::etf::configuration::settings::{Settings};
 use crate::org::unibl::etf::controllers::current_weather_controller;
@@ -25,8 +27,13 @@ pub fn run(
     tcp_listener: TcpListener,
     settings: Settings,
 ) -> std::io::Result<Server> {
-    let http_client =
-        web::Data::new(reqwest::Client::new());
+
+    let http_client = web::Data::new(
+        ClientBuilder::new(reqwest::Client::new())
+            .with(TracingMiddleware::default())
+            .build()
+    );
+
     let current_weather_service =
         web::Data::new(CurrentWeatherService::default());
     let settings =

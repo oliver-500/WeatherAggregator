@@ -5,15 +5,36 @@ use crate::org::unibl::etf::model::dto::location_candidate::LocationCandidate;
 use crate::org::unibl::etf::model::errors::geocoding_api_error::ExternalGeocodingApiError;
 use crate::org::unibl::etf::model::errors::geocoding_service_error::{GeocodingServiceError};
 use crate::org::unibl::etf::model::responses::geocoding_api_response::GeocodingAPIResponse;
+use crate::org::unibl::etf::repositories::provider_repository::ProviderRepository;
 
 #[derive(Debug)]
 pub struct GeocodingService {
-
+    provider_repository: ProviderRepository,
 }
 
 impl GeocodingService {
     fn new() -> Self {
         Self {
+            provider_repository: ProviderRepository::default()
+        }
+    }
+
+    #[tracing::instrument(name = "Check if ratelimit is exceeded function", skip(redis_pool))]
+    pub async fn check_if_ratelimit_is_exceeded(
+        &self,
+        max_number_of_requests_per_30_mins: u64,
+        provider_name: &str,
+        redis_pool: &deadpool_redis::Pool,
+    ) -> Result<bool, GeocodingServiceError> {
+        match self.provider_repository.get_number_of_requests(provider_name, redis_pool).await{
+            Ok(number_of_requests) => {
+                tracing::info!("Successfully retrieved number of requests made for the geocoding provider");
+                Ok(number_of_requests >= max_number_of_requests_per_30_mins as i64)
+            },
+            Err(e) => {
+                tracing::info!("Was not able to get number of requests made for the geocoding provider: {}", e.get_message());
+                Err(e)
+            },
         }
     }
 
@@ -23,8 +44,26 @@ impl GeocodingService {
         location: &String,
         limit: u16,
         client: &reqwest::Client,
-        settings: &GeocodingAPISettings
+        settings: &GeocodingAPISettings,
+        redis_pool: &deadpool_redis::Pool,
     ) -> Result<Vec<LocationCandidate>, GeocodingServiceError> {
+        match self.check_if_ratelimit_is_exceeded(
+            settings.requests_per_30_mins,
+            settings.provider.as_str(),
+            redis_pool
+        ).await {
+            Ok(exceeded) => {
+                if exceeded {
+                    tracing::info!("Ratelimit exceeded for the geocoding provider.");
+                    return Err(GeocodingServiceError::RateLimitExceeded);
+                }
+                tracing::info!("Ratelimit not exceeded for the geocoding provider.");
+            },
+            Err(e) => {
+                return Err(e);
+            }
+        }
+
         let response = client
             .get(settings.endpoint.clone())
             .query(&[
@@ -48,6 +87,18 @@ impl GeocodingService {
                         e, body_text
                     )))
                 })?;
+
+            match self.provider_repository.increment_number_of_requests(
+                settings.provider.as_str(),
+                redis_pool,
+            ).await {
+                Ok(new_value) => {
+                    tracing::info!("Successfully incremented number of requests made. New value: {}", new_value)
+                },
+                Err(e) => {
+                    tracing::error!("Failed to increment number of requests made with error: {:?}", e.get_message())
+                }
+            }
 
             if data.is_empty() {
                 return Err(GeocodingServiceError::LocationNotFoundError(Some(location.clone())));

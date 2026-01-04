@@ -1,5 +1,6 @@
 use std::{fs, io};
 use opentelemetry_otlp::tonic_types::transport::{Certificate, ClientTlsConfig, Identity};
+use secrecy::{ExposeSecret, SecretBox};
 use serde::Deserialize;
 use serde_aux::field_attributes::deserialize_number_from_string;
 use serde_aux::prelude::deserialize_bool_from_anything;
@@ -9,6 +10,7 @@ pub struct Settings {
     pub application: ApplicationSettings,
     pub geocoding_api: GeocodingAPISettings,
     pub tracing_agent: TracingSettings,
+    pub redis_store: RedisStoreSettings,
 }
 
 #[derive(Deserialize, Debug)]
@@ -21,9 +23,10 @@ pub struct ApplicationSettings {
 #[derive(Deserialize, Debug)]
 pub struct GeocodingAPISettings {
     #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub requests_per_minute: u16,
+    pub requests_per_30_mins: u64,
     pub api_key: String,
     pub endpoint: String,
+    pub provider: String,
 }
 
 
@@ -50,6 +53,16 @@ pub struct TracingSettings {
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub timeout_in_ms: u16,
     pub domain_name: String,
+}
+
+#[derive(serde::Deserialize, Debug)]
+pub struct RedisStoreSettings {
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    pub port: u16,
+    pub host: String,
+    pub scheme: String,
+    pub username: String,
+    pub user_password: SecretBox<String>
 }
 
 impl TracingSettings {
@@ -82,5 +95,17 @@ impl TracingSettings {
         }
 
         return Ok(None)
+    }
+}
+
+
+
+impl RedisStoreSettings {
+    pub fn get_redis_config(&self) -> Result<String, io::Error> {
+        let connection_uri = format!("{}://{}:{}@{}:{}?protocol=resp2",
+                                     self.scheme, &self.username,
+                                     &self.user_password.expose_secret(),
+                                     &self.host, &self.port);
+        return Ok(connection_uri)
     }
 }

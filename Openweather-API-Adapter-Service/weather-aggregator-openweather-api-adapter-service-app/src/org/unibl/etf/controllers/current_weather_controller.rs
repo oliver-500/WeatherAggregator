@@ -1,7 +1,7 @@
 use actix_web::{web, HttpResponse, Responder};
 
 use actix_web_validator::Query;
-use reqwest::Client;
+use reqwest_middleware::ClientWithMiddleware;
 use crate::org::unibl::etf::configuration::settings::{Settings};
 use crate::org::unibl::etf::controllers::errors::generic_service_error::{GenericServiceError, GenericServiceErrorDetails};
 
@@ -20,7 +20,7 @@ async fn get_current_weather_data(
     current_weather_service: web::Data<CurrentWeatherService>,
     geocoding_service: web::Data<GeocodingService>,
     query: Query<CurrentWeatherRequest>,
-    http_client: web::Data<Client>,
+    http_client: web::Data<ClientWithMiddleware>,
     settings: web::Data<Settings>,
 ) -> Result<impl Responder, GenericServiceError> {
     let (lat, lon) = if query.lat == None || query.lon == None {

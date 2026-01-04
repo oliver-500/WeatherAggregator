@@ -1,4 +1,5 @@
-use reqwest::{Error, StatusCode};
+use reqwest::{StatusCode};
+use reqwest_middleware::ClientWithMiddleware;
 use crate::org::unibl::etf::configuration::settings::{ProviderSettings};
 use crate::org::unibl::etf::model::errors::weather_api_error::{WeatherAPIError};
 use crate::org::unibl::etf::model::errors::adapter_service_error::{AdapterServiceError};
@@ -20,7 +21,7 @@ impl CurrentWeatherService {
     pub async fn get_current_weather_by_coordinates_or_location_name(
         &self,
         request: &CurrentWeatherRequest,
-        client: &reqwest::Client,
+        client: &ClientWithMiddleware,
         settings: &ProviderSettings
     ) -> Result<WeatherAPICurrentWeatherResponse, AdapterServiceError> {
         let q_argument = if request.lat.is_none() || request.lon.is_none() {
@@ -30,14 +31,15 @@ impl CurrentWeatherService {
             format!("{},{}", &request.lat.clone().unwrap().to_string(), &request.lon.clone().unwrap().to_string())
         };
 
-        let response = client.get(format!("{}/{}", settings.base_api_url, settings.current_weather_endpoint))
+        let response = client
+            .get(format!("{}/{}", settings.base_api_url, settings.current_weather_endpoint))
             .query(&[
                 ("q", q_argument.as_str()),
                 ("key", settings.api_key.as_str()),
             ])
             .send()
             .await
-            .map_err(|e : Error| {
+            .map_err(|e| {
                 AdapterServiceError::ConnectionError(Some(e.to_string()))
             })?;
 

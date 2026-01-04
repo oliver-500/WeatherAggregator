@@ -23,6 +23,7 @@ async fn health_check() -> impl Responder {
 pub fn run(
     tcp_listener: TcpListener,
     settings: GeocodingAPISettings,
+    redis_pool: deadpool_redis::Pool
 ) -> std::io::Result<Server> {
 
     let http_client =
@@ -31,6 +32,7 @@ pub fn run(
         web::Data::new(GeocodingService::default());
     let configuration_settings =
         web::Data::new(settings);
+    let redis_pool = web::Data::new(redis_pool);
 
 
     let server = HttpServer::new(move || {
@@ -38,6 +40,7 @@ pub fn run(
             .app_data(http_client.clone())
             .app_data(geocoding_service.clone())
             .app_data(configuration_settings.clone())
+            .app_data(redis_pool.clone())
             .wrap(TracingLogger::default())
             .app_data(QueryConfig::default()
                 .error_handler(query_error_handler::handle_validation_error)

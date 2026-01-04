@@ -1,5 +1,7 @@
 FROM redis:8.4
 
+COPY certs/ /etc/redis/
+
 EXPOSE 6379
 
 ENTRYPOINT ["redis-server"]

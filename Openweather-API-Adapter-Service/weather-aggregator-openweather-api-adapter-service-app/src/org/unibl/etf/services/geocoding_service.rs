@@ -1,4 +1,5 @@
 use reqwest::StatusCode;
+use reqwest_middleware::ClientWithMiddleware;
 use crate::org::unibl::etf::configuration::settings::GeocodingServiceSettings;
 
 use crate::org::unibl::etf::model::errors::adapter_service_error::AdapterServiceError;
@@ -22,7 +23,7 @@ impl GeocodingService {
     pub async fn geocode_location(
         &self,
         location: &str,
-        client: &reqwest::Client,
+        client: &ClientWithMiddleware,
         limit: u8,
         settings: &GeocodingServiceSettings,
     ) -> Result<(f64, f64), AdapterServiceError> {
@@ -83,7 +84,7 @@ impl GeocodingService {
                                     e, error_body_text
                                 )))
                             })?;
-                    tracing::error!("Geocoding Service while trying to geocode location");
+                    tracing::error!("Geocoding Service error while trying to geocode location");
 
                     return Err(AdapterServiceError::from(error_body.error.code));
                 },
