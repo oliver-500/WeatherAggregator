@@ -20,12 +20,14 @@ async fn get_current_weather_data(
     query: Query<CurrentWeatherRequest>,
     http_client: web::Data<ClientWithMiddleware>,
     settings: web::Data<Settings>,
+    redis_pool: web::Data<deadpool_redis::Pool>
 ) -> Result<impl Responder, GenericServiceError> {
     let res = current_weather_service
         .get_current_weather_by_coordinates_or_location_name(
             query.as_ref(),
             http_client.get_ref(),
-            &settings.provider
+            &settings.provider,
+            redis_pool.get_ref(),
         )
         .await
         .and_then(|res| {

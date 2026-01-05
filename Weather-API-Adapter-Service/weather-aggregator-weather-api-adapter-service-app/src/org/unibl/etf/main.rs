@@ -1,5 +1,7 @@
 use std::net::TcpListener;
+use rustls::crypto::CryptoProvider;
 use weather_aggregator_weather_api_adapter_service_app::org::unibl::etf::configuration::get_configuration;
+use weather_aggregator_weather_api_adapter_service_app::org::unibl::etf::external_dependency_systems::redis_store::create_redis_pool;
 use weather_aggregator_weather_api_adapter_service_app::org::unibl::etf::startup::run;
 use weather_aggregator_weather_api_adapter_service_app::org::unibl::etf::telemetry::{get_subscriber, init_subscriber};
 
@@ -7,6 +9,10 @@ use weather_aggregator_weather_api_adapter_service_app::org::unibl::etf::telemet
 async fn main() -> std::io::Result<()> {
     let configuration = get_configuration("resources/configuration")
         .expect("Failed to read configuration.");
+
+    //install crypto provider and fail fast due to criticality if not successful
+    CryptoProvider::install_default(rustls::crypto::ring::default_provider())
+        .expect("Failed to install CryptoProvider.");
 
     let subscriber = get_subscriber("Weather API Adapter Service".into(), "info".into(), std::io::stdout, configuration.tracing_agent.clone());
     init_subscriber(subscriber);
@@ -19,9 +25,16 @@ async fn main() -> std::io::Result<()> {
     let listener = TcpListener::bind(address)
         .expect("Failed to bind to specified address.");
 
+    let redis_connection_uri = configuration
+        .redis_store
+        .get_redis_config().expect("Failed to get redis connection URI");
+
+    let redis_pool = create_redis_pool(redis_connection_uri);
+
     let res = run(
         listener,
-        configuration
+        configuration,
+        redis_pool
     )?.await;
 
     res

@@ -102,7 +102,7 @@ impl TracingSettings {
 
 impl RedisStoreSettings {
     pub fn get_redis_config(&self) -> Result<String, io::Error> {
-        let connection_uri = format!("{}://{}:{}@{}:{}?protocol=resp2",
+        let connection_uri = format!("{}://{}:{}@{}:{}",
                                      self.scheme, &self.username,
                                      &self.user_password.expose_secret(),
                                      &self.host, &self.port);

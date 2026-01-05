@@ -19,6 +19,7 @@ pub struct GeocodingGenericErrorDetails {
 #[derive(Debug, Clone)]
 pub enum GeocodingServiceError {
     LocationNotFoundError(Option<String>),
+    RateLimitExceeded,
     ServerError,
 }
 
@@ -26,6 +27,7 @@ pub enum GeocodingServiceError {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 enum RawRemoteError {
     LocationNotFoundError(Option<String>),
+    RateLimitExceeded,
     ServerError,
     #[serde(other)]
     Unknown,
@@ -45,6 +47,9 @@ where
         },
         RawRemoteError::ServerError => {
             Ok(GeocodingServiceError::ServerError)
+        },
+        RawRemoteError::RateLimitExceeded => {
+            Ok(GeocodingServiceError::RateLimitExceeded)
         }
     }
 }

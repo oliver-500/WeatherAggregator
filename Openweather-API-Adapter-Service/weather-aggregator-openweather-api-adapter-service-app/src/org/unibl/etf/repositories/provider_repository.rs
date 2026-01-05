@@ -1,6 +1,6 @@
-use std::error::Error;
-use deadpool_redis::redis::{pipe, AsyncCommands, RedisResult, Value};
-use crate::org::unibl::etf::model::errors::geocoding_service_error::GeocodingServiceError;
+
+use deadpool_redis::redis::{pipe, AsyncCommands, RedisResult};
+use crate::org::unibl::etf::model::errors::adapter_service_error::AdapterServiceError;
 
 #[derive(Debug)]
 pub struct ProviderRepository{
@@ -18,12 +18,12 @@ impl ProviderRepository {
         &self,
         provider_name: &str,
         redis_pool: &deadpool_redis::Pool
-    ) -> Result<i64, GeocodingServiceError> {
+    ) -> Result<i64, AdapterServiceError> {
         let mut conn = match redis_pool.get().await {
             Ok(c) => c,
             Err(e) => {
                 let error_message = format!("Failed to get connection from pool: {}", e);
-                return Err(GeocodingServiceError::ServerError(Some(error_message)));
+                return Err(AdapterServiceError::ServerError(Some(error_message)));
             }
         };
 
@@ -32,7 +32,7 @@ impl ProviderRepository {
         let number_of_requests: Option<i64> = conn.get(&key)
             .await
             .map_err(|e| {
-                GeocodingServiceError::RedisError(
+                AdapterServiceError::RedisError(
                     Some(e.code().unwrap_or("").to_string()), Some(e.to_string())
                 )
             })?;
@@ -47,17 +47,16 @@ impl ProviderRepository {
         &self,
         provider_name: &str,
         redis_pool: &deadpool_redis::Pool,
-    )-> Result<i64, GeocodingServiceError> {
+    )-> Result<i64, AdapterServiceError> {
         let mut conn = match redis_pool.get().await {
             Ok(c) => c,
             Err(e) => {
                 let error_message = format!("Failed to get connection from pool: {}", e);
-                return Err(GeocodingServiceError::ServerError(Some(error_message)));
+                return Err(AdapterServiceError::ServerError(Some(error_message)));
             }
         };
 
         let key = format!("provider:{}:ratelimit", provider_name);
-        
 
         let result: RedisResult<(i64, i64)> = pipe()
             //.atomic()
@@ -66,16 +65,14 @@ impl ProviderRepository {
             .query_async(&mut conn)
             .await;
 
-        //tracing::info!("RAW REDIS RESPONSE: {:?}", raw);
-
         let current_count = match result {
-            Ok((current_count, expire_successful)) => {
+            Ok((current_count, _expire_successful)) => {
                 tracing::info!("Successfully incremented number of requests in redis store.");
                 current_count
             },
             Err(e) => {
                 tracing::error!("Failed to increment number of requests in redis store.");
-                return Err(GeocodingServiceError::RedisError(
+                return Err(AdapterServiceError::RedisError(
                     Some(e.code().unwrap_or("").to_string()), Some(e.to_string())
                 ));
             }

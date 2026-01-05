@@ -4,3 +4,7 @@ user weather_aggregator_cache_service_app on >34jewsdfe34564 ~weather:* +@string
 
 user weather_aggregator_geocoding_service_app on >80jsgb3402jfpq ~provider:* +@string +expire +get +set +setex +scan +info +incr +multi +monitor +config
 
+user weather_aggregator_openweather_api_adapter_service_app on >fdserw23423w3 ~provider:* +@string +expire +get +set +setex +scan +info +incr +multi +monitor +config
+
+user weather_aggregator_weather_api_adapter_service_app on >56dfssd234aew ~provider:* +@string +expire +get +set +setex +scan +info +incr +multi +monitor +config
+

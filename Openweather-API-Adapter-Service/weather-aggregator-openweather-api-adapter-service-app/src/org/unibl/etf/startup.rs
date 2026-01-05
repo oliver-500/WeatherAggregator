@@ -26,14 +26,15 @@ async fn health_check() -> impl Responder {
 pub fn run(
     tcp_listener: TcpListener,
     settings: Settings,
+    redis_pool: deadpool_redis::Pool
 ) -> std::io::Result<Server> {
-
     let http_client = web::Data::new(
         ClientBuilder::new(reqwest::Client::new())
             .with(TracingMiddleware::default())
             .build()
     );
 
+    let redis_pool = web::Data::new(redis_pool);
     let current_weather_service =
         web::Data::new(CurrentWeatherService::default());
     let settings =
@@ -47,6 +48,7 @@ pub fn run(
             .app_data(geocoding_service.clone())
             .app_data(current_weather_service.clone())
             .app_data(settings.clone())
+            .app_data(redis_pool.clone())
             .wrap(TracingLogger::default())
             .app_data(QueryConfig::default()
                 .error_handler(query_error_handler::handle_validation_error)

@@ -22,6 +22,7 @@ async fn get_current_weather_data(
     query: Query<CurrentWeatherRequest>,
     http_client: web::Data<ClientWithMiddleware>,
     settings: web::Data<Settings>,
+    redis_pool: web::Data<deadpool_redis::Pool>
 ) -> Result<impl Responder, GenericServiceError> {
     let (lat, lon) = if query.lat == None || query.lon == None {
         match geocoding_service.geocode_location(
@@ -52,7 +53,8 @@ async fn get_current_weather_data(
         .get_current_weather_by_coordinates(
             (lat, lon),
             http_client.get_ref(),
-            &settings.provider
+            &settings.provider,
+            redis_pool.get_ref(),
         )
         .await
         .and_then(|res| {

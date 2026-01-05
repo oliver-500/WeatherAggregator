@@ -10,6 +10,8 @@ pub enum AdapterServiceError {
     LocationNotFoundError(String),
     RequestParametersValidationError(Option<String>),
     InvalidProviderResponseError(Option<String>),
+    RateLimitExceeded,
+    RedisError(Option<String>, Option<String>),
 }
 
 impl AdapterServiceError {
@@ -20,6 +22,7 @@ impl AdapterServiceError {
         match self {
             Self::LocationNotFoundError(s) => Self::LocationNotFoundError(s.clone()),
             Self::RequestParametersValidationError(s) => Self::RequestParametersValidationError(s.clone()),
+            Self::RateLimitExceeded => Self::RateLimitExceeded,
             _ => Self::ServerError(None),
         }
 
@@ -40,7 +43,10 @@ impl AdapterServiceError {
             },
             AdapterServiceError::LocationNotFoundError(location) => {
                 format!("Location with name {} not found", location)
-            }
+            },
+            AdapterServiceError::RateLimitExceeded => {
+                String::from("API Rate Limit exceeded for the provider.")
+            },
 
             _ => { String::default() }
         }
@@ -70,6 +76,8 @@ impl AdapterServiceError {
             AdapterServiceError::LocationNotFoundError(_) => 1016,
             AdapterServiceError::RequestParametersValidationError(_) => 1017,
             AdapterServiceError::InvalidProviderResponseError(_) => 1018,
+            AdapterServiceError::RedisError(_, _) => 1019,
+            AdapterServiceError::RateLimitExceeded => 1020,
         }
     }
 }

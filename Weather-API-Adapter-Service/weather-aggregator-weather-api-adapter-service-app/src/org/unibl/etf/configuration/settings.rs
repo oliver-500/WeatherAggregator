@@ -3,12 +3,14 @@ use serde::Deserialize;
 use serde_aux::field_attributes::deserialize_number_from_string;
 use serde_aux::prelude::deserialize_bool_from_anything;
 use std::{fs, io};
+use secrecy::{ExposeSecret, SecretBox};
 
 #[derive(Deserialize, Debug)]
 pub struct Settings {
     pub application: ApplicationSettings,
     pub provider: ProviderSettings,
     pub tracing_agent: TracingSettings,
+    pub redis_store: RedisStoreSettings,
 }
 
 #[derive(Deserialize, Debug)]
@@ -25,7 +27,28 @@ pub struct ProviderSettings {
     pub current_weather_endpoint: String,
     pub api_key: String,
     #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub requests_per_minute: u16,
+    pub requests_per_30_mins: u64,
+}
+
+
+#[derive(serde::Deserialize, Debug)]
+pub struct RedisStoreSettings {
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    pub port: u16,
+    pub host: String,
+    pub scheme: String,
+    pub username: String,
+    pub user_password: SecretBox<String>
+}
+
+impl RedisStoreSettings {
+    pub fn get_redis_config(&self) -> Result<String, io::Error> {
+        let connection_uri = format!("{}://{}:{}@{}:{}",
+                                     self.scheme, &self.username,
+                                     &self.user_password.expose_secret(),
+                                     &self.host, &self.port);
+        return Ok(connection_uri)
+    }
 }
 
 #[derive(serde::Deserialize, Debug, Clone)]

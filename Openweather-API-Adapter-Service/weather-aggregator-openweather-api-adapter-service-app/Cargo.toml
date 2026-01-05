@@ -33,3 +33,6 @@ tracing-actix-web = { version = "0.7", features = ["opentelemetry_0_30"] }
 reqwest-middleware = { version = "0.4.2", features = ["json"] }
 reqwest-tracing = { version = "0.5.8", features = ["opentelemetry_0_30"] }
 rustls = "0.23.28"
+redis = { version = "1.0.1", features = ["tokio-rustls-comp", "tls-rustls"]}
+deadpool-redis = { version = "0.22.0", features = ["tokio-rustls-comp", "tls-rustls"] }
+secrecy = {version = "0.10.3", features = ["serde"]}

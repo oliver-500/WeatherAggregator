@@ -15,6 +15,8 @@ pub enum AdapterServiceError {
     GeocodingServiceError(u16, Option<String>),
     GeocodingResponseParsingError(Option<String>),
     AmbiguousLocationNameError(Vec<LocationCandidate>),
+    RateLimitExceeded,
+    RedisError(Option<String>, Option<String>),
 }
 
 impl AdapterServiceError {
@@ -25,6 +27,7 @@ impl AdapterServiceError {
             Self::LocationNotFoundError(s) => Self::LocationNotFoundError(s.clone()),
             Self::AmbiguousLocationNameError(candidates) => Self::AmbiguousLocationNameError(candidates.clone()),
             Self::RequestParametersValidationError(s) => Self::RequestParametersValidationError(s.clone()),
+            Self::RateLimitExceeded => Self::RateLimitExceeded,
             _ => Self::ServerError(None),
         }
 
@@ -39,6 +42,9 @@ impl AdapterServiceError {
             },
             AdapterServiceError::RequestParametersValidationError(_) => {
                 String::from("Request parameters are invalid.")
+            },
+            AdapterServiceError::RateLimitExceeded => {
+                String::from("API Rate Limit exceeded for the provider.")
             }
             _ => { String::from("Unexpected server error.") }
         }
@@ -60,7 +66,12 @@ impl AdapterServiceError {
             AdapterServiceError::LocationNotFoundError(_) => 1008,
             AdapterServiceError::AmbiguousLocationNameError(_) => 1009,
             AdapterServiceError::RequestParametersValidationError(_) => 1010,
-            _ => 1011,
+            AdapterServiceError::RateLimitExceeded => 1011,
+            AdapterServiceError::InvalidProviderResponseError(_) => 1012,
+            AdapterServiceError::GeocodingServiceError(_, _) => 1013,
+            AdapterServiceError::GeocodingResponseParsingError(_) => 1014,
+            AdapterServiceError::RedisError(_, _) => 1015,
+            _ => 1016,
 
         }
     }
@@ -74,6 +85,9 @@ impl From<GeocodingServiceError> for AdapterServiceError {
             }
             GeocodingServiceError::ServerError => {
                 AdapterServiceError::ServerError(None)
+            },
+            GeocodingServiceError::RateLimitExceeded => {
+                AdapterServiceError::RateLimitExceeded
             }
         }
     }

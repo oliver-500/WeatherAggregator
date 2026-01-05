@@ -76,6 +76,19 @@ impl GeocodingService {
             .map_err(|e| GeocodingServiceError::ConnectionError(Some(e.to_string())))?;
 
         if response.status().is_success() {
+            match self.provider_repository.increment_number_of_requests(
+                settings.provider.as_str(),
+                redis_pool,
+            ).await {
+                Ok(new_value) => {
+                    tracing::info!("Successfully incremented number of requests made. New value: {}", new_value)
+                },
+                Err(e) => {
+                    tracing::error!("Failed to increment number of requests made with error: {:?}", e.get_message())
+                }
+            }
+
+
             let body_text = response.text().await.map_err(|e| {
                 GeocodingServiceError::ServerError(Some(format!("Failed to get Geocoding API success response body text: {}", e)))
             })?;
@@ -88,17 +101,6 @@ impl GeocodingService {
                     )))
                 })?;
 
-            match self.provider_repository.increment_number_of_requests(
-                settings.provider.as_str(),
-                redis_pool,
-            ).await {
-                Ok(new_value) => {
-                    tracing::info!("Successfully incremented number of requests made. New value: {}", new_value)
-                },
-                Err(e) => {
-                    tracing::error!("Failed to increment number of requests made with error: {:?}", e.get_message())
-                }
-            }
 
             if data.is_empty() {
                 return Err(GeocodingServiceError::LocationNotFoundError(Some(location.clone())));
