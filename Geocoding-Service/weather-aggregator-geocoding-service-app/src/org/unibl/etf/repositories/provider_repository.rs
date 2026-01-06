@@ -1,5 +1,5 @@
-use std::error::Error;
-use deadpool_redis::redis::{pipe, AsyncCommands, RedisResult, Value};
+
+use deadpool_redis::redis::{pipe, AsyncCommands, RedisResult};
 use crate::org::unibl::etf::model::errors::geocoding_service_error::GeocodingServiceError;
 
 #[derive(Debug)]
@@ -57,7 +57,7 @@ impl ProviderRepository {
         };
 
         let key = format!("provider:{}:ratelimit", provider_name);
-        
+
 
         let result: RedisResult<(i64, i64)> = pipe()
             //.atomic()
@@ -69,7 +69,7 @@ impl ProviderRepository {
         //tracing::info!("RAW REDIS RESPONSE: {:?}", raw);
 
         let current_count = match result {
-            Ok((current_count, expire_successful)) => {
+            Ok((current_count, _expire_successful)) => {
                 tracing::info!("Successfully incremented number of requests in redis store.");
                 current_count
             },

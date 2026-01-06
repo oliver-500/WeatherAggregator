@@ -5,6 +5,7 @@ use actix_web_validator::QueryConfig;
 use chrono::Utc;
 use reqwest_middleware::ClientBuilder;
 use reqwest_tracing::TracingMiddleware;
+use rustls::ServerConfig;
 use tracing_actix_web::TracingLogger;
 use crate::org::unibl::etf::configuration::settings::{Settings};
 use crate::org::unibl::etf::controllers::current_weather_controller;
@@ -25,7 +26,8 @@ async fn health_check() -> impl Responder {
 pub fn run(
     tcp_listener: TcpListener,
     settings: Settings,
-    redis_pool: deadpool_redis::Pool
+    redis_pool: deadpool_redis::Pool,
+    server_config: Option<ServerConfig>,
 ) -> std::io::Result<Server> {
     let http_client = web::Data::new(
         ClientBuilder::new(reqwest::Client::new())
@@ -38,7 +40,7 @@ pub fn run(
     let settings =
         web::Data::new(settings);
 
-    let server = HttpServer::new(move || {
+    let mut server = HttpServer::new(move || {
         App::new()
             .app_data(http_client.clone())
             .app_data(current_weather_service.clone())
@@ -53,9 +55,12 @@ pub fn run(
                     .configure(current_weather_controller::routes)
             )
             .route("/health_check", web::get().to(health_check))
-    })
-        .listen(tcp_listener)?
-        .run();
+    });
 
-    Ok(server)
+    server = match server_config {
+        Some(config) => server.listen_rustls_0_23(tcp_listener, config)?,
+        None => server.listen(tcp_listener)?,
+    };
+
+    Ok(server.run())
 }

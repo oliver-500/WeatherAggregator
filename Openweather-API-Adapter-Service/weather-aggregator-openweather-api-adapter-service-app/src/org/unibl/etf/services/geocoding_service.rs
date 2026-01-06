@@ -28,7 +28,7 @@ impl GeocodingService {
         settings: &GeocodingServiceSettings,
     ) -> Result<(f64, f64), AdapterServiceError> {
         let response = client
-            .get(format!("http://{}:{}/api/v1/geocode", settings.host, settings.port))
+            .get(format!("{}://{}:{}/api/v1/geocode", settings.scheme,settings.host, settings.port))
             .query(&[
                 ("location_name", location),
                 ("limit", limit.to_string().as_str()),

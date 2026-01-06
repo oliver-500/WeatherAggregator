@@ -1,6 +1,5 @@
 use futures::future::join_all;
 use reqwest_middleware::ClientWithMiddleware;
-use tracing::Instrument;
 use crate::org::unibl::etf::model::errors::aggregator_error::AggregatorError;
 use crate::org::unibl::etf::configuration::settings::{CacheServiceSettings, ProviderSettings};
 use crate::org::unibl::etf::model::errors::cache_service_error::CacheServiceError;
@@ -36,7 +35,7 @@ impl CurrentWeatherService {
         params.push(("lat", req.lat.unwrap().to_string()));
         params.push(("lon", req.lon.unwrap().to_string()));
 
-        let url = format!("http://{}:{}/api/v1/current_weather", cache_service_settings.host, cache_service_settings.port);
+        let url = format!("{}://{}:{}/api/v1/current_weather", cache_service_settings.scheme, cache_service_settings.host, cache_service_settings.port);
 
         let response = client
             .get(url)
@@ -115,7 +114,7 @@ impl CurrentWeatherService {
             let req = req.clone();
 
             async move {
-                let url = format!("http://{}:{}/api/v1/current_weather", provider.host, provider.port);
+                let url = format!("{}://{}:{}/api/v1/current_weather", provider.scheme, provider.host, provider.port);
                 let mut params = Vec::new();
 
                 if let Some(lat) = req.lat {
@@ -143,6 +142,8 @@ impl CurrentWeatherService {
                         .map_err(|e| AggregatorError::ServerError(
                             Some(format!("Failed to get {} Adapter Service success response body text: {}", provider.name, e))
                         ))?;
+
+                    println!("joj {}", body_text);
 
                     let res: CurrentWeatherResponse = serde_json::from_str(&body_text)
                         .map_err(|e| {
@@ -259,7 +260,7 @@ impl CurrentWeatherService {
         cache_service_settings: &CacheServiceSettings,
         data: &StoreCurrentWeatherDataRequest,
     ) -> Result<bool, AggregatorError> {
-        let url = format!("http://{}:{}/api/v1/current_weather", cache_service_settings.host, cache_service_settings.port);
+        let url = format!("{}://{}:{}/api/v1/current_weather", cache_service_settings.scheme, cache_service_settings.host, cache_service_settings.port);
 
         let response = client
             .put(url)

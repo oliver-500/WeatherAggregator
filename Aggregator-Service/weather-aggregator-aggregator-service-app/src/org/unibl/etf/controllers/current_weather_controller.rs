@@ -1,10 +1,7 @@
 
 use actix_web::{web, HttpResponse, Responder};
 use actix_web_validator::Query;
-use opentelemetry::trace::TraceContextExt;
-
 use reqwest_middleware::ClientWithMiddleware;
-use tracing_opentelemetry::OpenTelemetrySpanExt;
 use crate::org::unibl::etf::configuration::settings::{CacheServiceSettings, ProviderSettings};
 use crate::org::unibl::etf::controllers::errors::{GenericServiceError, GenericServiceErrorDetails};
 use crate::org::unibl::etf::model::requests::upstream_current_weather_request::UpstreamCurrentWeatherRequest;

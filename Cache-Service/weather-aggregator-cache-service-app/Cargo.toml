@@ -12,7 +12,7 @@ path = "src/org/unibl/etf/main.rs"
 name = "weather-aggregator-cache-service-app"
 
 [dependencies]
-actix-web = { version = "4.12.1" }
+actix-web = { version = "4.12.1",features = ["rustls-0_23"] }
 actix-web-validator = { version = "7.0.0"}
 serde = { version = "1.0.228", features = ["derive"] }
 serde-aux = { version = "4.7.0" }
@@ -33,3 +33,6 @@ opentelemetry = "0.30.0"
 opentelemetry-otlp = { version = "0.30.0", features = ["tonic", "grpc-tonic", "tls-roots"] }
 opentelemetry_sdk = { version = "0.30.0", features = ["experimental_trace_batch_span_processor_with_async_runtime"] }
 tracing-actix-web = { version = "0.7", features = ["opentelemetry_0_30"] }
+rustls-pemfile = "2.2.0"
+
+rustls = "0.23.28"

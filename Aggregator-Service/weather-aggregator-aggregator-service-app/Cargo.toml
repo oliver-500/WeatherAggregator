@@ -12,10 +12,10 @@ path = "src/org/unibl/etf/main.rs"
 name = "weather-aggregator-aggregator-service-app"
 
 [dependencies]
-actix-web = { version = "4.12.1" }
+actix-web = { version = "4.12.1", features = ["rustls-0_23"] }
 actix-web-validator = { version = "7.0.0"}
 serde = { version = "1.0.228", features = ["derive"] }
-reqwest = { version =  "0.12.26", features = ["json"]}
+reqwest = { version = "0.12.26", features = ["json", "native-tls"] }
 serde-aux = { version = "4.7.0" }
 config = {version = "0.15.19"}
 chrono = {version = "0.4.42", features = ["serde"]}
@@ -34,4 +34,7 @@ tracing-actix-web = { version = "0.7", features = ["opentelemetry_0_30"] }
 reqwest-middleware = { version = "0.4.2", features = ["json"] }
 reqwest-tracing = { version = "0.5.8", features = ["opentelemetry_0_30"] }
 async-trait = "0.1.89"
+rustls-pemfile = "2.2.0"
+secrecy = {version = "0.10.3", features = ["serde"]}
+rustls = "0.23.28"
 http = "1.4.0"

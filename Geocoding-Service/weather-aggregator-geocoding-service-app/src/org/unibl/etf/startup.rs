@@ -3,6 +3,7 @@ use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use actix_web::dev::Server;
 use actix_web_validator::QueryConfig;
 use chrono::Utc;
+use rustls::ServerConfig;
 use tracing_actix_web::TracingLogger;
 use crate::org::unibl::etf::configuration::settings::{GeocodingAPISettings};
 use crate::org::unibl::etf::controllers::geocoding_controller;
@@ -23,7 +24,8 @@ async fn health_check() -> impl Responder {
 pub fn run(
     tcp_listener: TcpListener,
     settings: GeocodingAPISettings,
-    redis_pool: deadpool_redis::Pool
+    redis_pool: deadpool_redis::Pool,
+    server_config: Option<ServerConfig>
 ) -> std::io::Result<Server> {
 
     let http_client =
@@ -35,7 +37,7 @@ pub fn run(
     let redis_pool = web::Data::new(redis_pool);
 
 
-    let server = HttpServer::new(move || {
+    let mut server = HttpServer::new(move || {
         App::new()
             .app_data(http_client.clone())
             .app_data(geocoding_service.clone())
@@ -50,12 +52,13 @@ pub fn run(
                     .configure(geocoding_controller::routes)
             )
             .route("/health_check", web::get().to(health_check))
-    })
-        .listen(tcp_listener)?
-        .run();
+    });
 
-    Ok(server)
+    server = match server_config {
+        Some(config) => server.listen_rustls_0_23(tcp_listener, config)?,
+        None => server.listen(tcp_listener)?,
+    };
 
-
-
+    Ok(server.run())
+    
 }

@@ -2,6 +2,7 @@
 
 use reqwest::StatusCode;
 use reqwest_middleware::ClientWithMiddleware;
+use secrecy::ExposeSecret;
 use crate::org::unibl::etf::configuration::settings::{ProviderSettings};
 use crate::org::unibl::etf::model::errors::openweather_api_error::{OpenWeatherAPIError};
 use crate::org::unibl::etf::model::errors::adapter_service_error::{AdapterServiceError};
@@ -71,7 +72,7 @@ impl CurrentWeatherService {
             .query(&[
                 ("lat", &lat.to_string()),
                 ("lon", &lon.to_string()),
-                ("appid", &provider_settings.api_key.to_string()),
+                ("appid", &provider_settings.api_key.expose_secret().to_string()),
                 ("units", &"metric".to_string()),
             ])
             .send()

@@ -12,7 +12,7 @@ path = "src/org/unibl/etf/main.rs"
 name = "weather-aggregator-geocoding-service-app"
 
 [dependencies]
-actix-web = { version = "4.12.1" }
+actix-web = { version = "4.12.1", features = ["rustls-0_23"]}
 actix-web-validator = { version = "7.0.0"}
 validator = { version = "0.20.0", features = ["derive"] }
 serde = { version = "1.0.228", features = ["derive"] }
@@ -34,3 +34,4 @@ redis = { version = "1.0.1", features = ["tokio-rustls-comp", "tls-rustls"]}
 deadpool-redis = { version = "0.22.0", features = ["tokio-rustls-comp", "tls-rustls"] }
 secrecy = {version = "0.10.3", features = ["serde"]}
 rustls = "0.23.28"
+rustls-pemfile = "2.2.0"

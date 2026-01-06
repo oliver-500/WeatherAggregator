@@ -28,7 +28,8 @@ fn build_tracing_span_exporter(tracing_backend_settings: TracingSettings)
         Ok(tls_config) => {
             if let Some(tls_config) = tls_config {
                 let endpoint =
-                    format!("https://{}:{}",
+                    format!("{}://{}:{}",
+                            tracing_backend_settings.scheme,
                             tracing_backend_settings.host,
                             tracing_backend_settings.port,
                     );
@@ -36,7 +37,8 @@ fn build_tracing_span_exporter(tracing_backend_settings: TracingSettings)
             }
             else {
                 let endpoint =
-                    format!("http://{}:{}",
+                    format!("{}://{}:{}",
+                            tracing_backend_settings.scheme,
                             tracing_backend_settings.host,
                             tracing_backend_settings.port,
                     );

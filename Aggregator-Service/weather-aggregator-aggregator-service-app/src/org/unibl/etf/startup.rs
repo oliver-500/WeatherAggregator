@@ -27,7 +27,9 @@ use async_trait::async_trait;
 use http::Extensions;
 use reqwest::Request;
 use reqwest_middleware::{Middleware, Next, Result};
+use rustls::ServerConfig;
 use tracing_actix_web::TracingLogger;
+use crate::org::unibl::etf::configuration::settings::HttpClientTlsIdentityBundle;
 
 struct LogHeaders;
 
@@ -53,18 +55,26 @@ impl Middleware for LogHeaders {
 pub fn run(
     tcp_listener: TcpListener,
     configuration: Settings,
+    server_config: Option<ServerConfig>,
+    client_config: HttpClientTlsIdentityBundle
 ) -> std::io::Result<Server> {
+
+    let mut client_builder = reqwest::Client::builder();
+    client_builder = client_builder
+        .identity(client_config.identity)
+        .add_root_certificate(client_config.ca_certificate);
+
     let http_client = web::Data::new(
-        ClientBuilder::new(reqwest::Client::new())
+        ClientBuilder::new(client_builder.build().unwrap())
             .with(TracingMiddleware::default())
-            .with(LogHeaders)
             .build()
     );
+
     let current_weather_service = web::Data::new(CurrentWeatherService::default());
     let providers_settings = web::Data::new(configuration.providers);
     let cache_service_settings = web::Data::new(configuration.cache_service);
 
-    let server = HttpServer::new(move || {
+    let mut server = HttpServer::new(move || {
         App::new()
             .app_data(http_client.clone())
             .app_data(current_weather_service.clone())
@@ -77,10 +87,13 @@ pub fn run(
                     .configure(current_weather_controller::routes)
             )
             .route("/health_check", web::get().to(health_check))
-    })
-        .listen(tcp_listener)?
-        .run();
+    });
+    server = match server_config {
+        Some(config) => server.listen_rustls_0_23(tcp_listener, config)?,
+        None => server.listen(tcp_listener)?,
+    };
 
-    Ok(server)
+
+    Ok(server.run())
 
 }

@@ -1,5 +1,5 @@
 use reqwest::StatusCode;
-
+use secrecy::ExposeSecret;
 use crate::org::unibl::etf::configuration::settings::{GeocodingAPISettings};
 use crate::org::unibl::etf::model::dto::location_candidate::LocationCandidate;
 use crate::org::unibl::etf::model::errors::geocoding_api_error::ExternalGeocodingApiError;
@@ -67,7 +67,7 @@ impl GeocodingService {
         let response = client
             .get(settings.endpoint.clone())
             .query(&[
-                ("appid", settings.api_key.clone()),
+                ("appid", settings.api_key.expose_secret().clone()),
                 ("q", location.clone()),
                 ("limit", limit.to_string()),
             ])

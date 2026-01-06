@@ -14,6 +14,11 @@ async fn main() -> std::io::Result<()> {
     CryptoProvider::install_default(rustls::crypto::ring::default_provider())
         .expect("Failed to install CryptoProvider.");
 
+    let http_server_config =
+        configuration
+            .application
+            .get_http_server_tls_config().expect("Failed to read required web server TLS config.");
+
     let subscriber = get_subscriber("Geocoding Service".into(), "info".into(), std::io::stdout, configuration.tracing_agent.clone());
     init_subscriber(subscriber);
 
@@ -35,6 +40,7 @@ async fn main() -> std::io::Result<()> {
         listener,
         configuration.geocoding_api,
         redis_pool,
+        http_server_config
     )?.await;
 
     res

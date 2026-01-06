@@ -1,5 +1,6 @@
 use reqwest::{StatusCode};
 use reqwest_middleware::ClientWithMiddleware;
+use secrecy::ExposeSecret;
 use crate::org::unibl::etf::configuration::settings::{ProviderSettings};
 use crate::org::unibl::etf::model::errors::weather_api_error::{WeatherAPIError};
 use crate::org::unibl::etf::model::errors::adapter_service_error::{AdapterServiceError};
@@ -75,7 +76,7 @@ impl CurrentWeatherService {
             .get(format!("{}/{}", provider_settings.base_api_url, provider_settings.current_weather_endpoint))
             .query(&[
                 ("q", q_argument.as_str()),
-                ("key", provider_settings.api_key.as_str()),
+                ("key", provider_settings.api_key.expose_secret().as_str()),
             ])
             .send()
             .await
