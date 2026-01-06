@@ -32,6 +32,18 @@ impl AdapterServiceError {
         }
 
     }
+
+    pub fn get_sanitized_message(&self) -> String {
+        match self {
+            Self::LocationNotFoundError(s) => s.clone().unwrap_or(String::default()),
+            Self::AmbiguousLocationNameError(_s) => self.get_message(),
+            Self::RequestParametersValidationError(s) => s.clone().unwrap_or(String::default()),
+            Self::RateLimitExceeded => self.get_message(),
+            _ => String::default(),
+        }
+
+    }
+
     pub fn get_message(&self) -> String {
         match self {
             AdapterServiceError::LocationNotFoundError(msg) => {

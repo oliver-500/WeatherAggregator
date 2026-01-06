@@ -39,7 +39,6 @@ impl fmt::Display for GenericServiceError {
 
 impl error::ResponseError for GenericServiceError {
     fn status_code(&self) -> StatusCode {
-        println!("{:?}", self.error.code);
         let status_code : StatusCode = match self.error.code {
             AggregatorError::RequestParametersValidationError(_) => {
                 StatusCode::BAD_REQUEST
@@ -62,6 +61,7 @@ impl error::ResponseError for GenericServiceError {
 
     fn error_response(&self) -> HttpResponse {
         let mut sanitized_details = self.error.clone();
+        sanitized_details.message = sanitized_details.code.get_sanitized_message();
 
         // 2. Sanitize the clone
         sanitized_details.code = sanitized_details.code.get_sanitized_error();

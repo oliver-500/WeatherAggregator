@@ -26,6 +26,15 @@ impl GeocodingServiceError {
             _ => Self::ServerError(None),
         }
     }
+    pub fn get_sanitized_message(&self) -> String {
+        match self {
+            Self::LocationNotFoundError(s) => s.clone().unwrap_or(String::default()),
+            Self::RequestValidationError(s) => s.clone().unwrap_or(String::default()),
+            Self::RateLimitExceeded => self.get_message(),
+            _ => String::default(),
+        }
+
+    }
 
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -60,7 +69,7 @@ impl GeocodingServiceError {
                 msg.clone().unwrap_or(String::default())
             },
             GeocodingServiceError::RateLimitExceeded => {
-                format!("Rate limit exceeded for geocoding provider")
+                format!("Rate limit exceeded for the geocoding provider.")
             },
             GeocodingServiceError::RedisError(_, msg) => msg.clone().unwrap_or(String::default()),
 

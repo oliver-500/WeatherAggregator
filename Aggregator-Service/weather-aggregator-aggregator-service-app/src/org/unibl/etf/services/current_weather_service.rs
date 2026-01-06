@@ -242,10 +242,10 @@ impl CurrentWeatherService {
                     &store_request
                 ).await {
                     Ok(_) => {
-                        println!("Successfully saved current weather data to cache.");
+                        tracing::info!("Successfully saved current weather data to cache.");
                     },
                     Err(e) => {
-                        println!("Error saving current weather data to cache with error: {}", e.get_message());
+                        tracing::error!("Error saving current weather data to cache with error: {}", e.get_message());
                     }
                 }
                 Ok(res)

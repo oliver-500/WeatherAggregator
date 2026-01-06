@@ -26,6 +26,11 @@ pub fn get_configuration(config_path : &str) -> Result<Settings, config::ConfigE
         .add_source(config::File::from(
             configuration_directory.join(environment_filename),
         ))
+        .add_source(
+            config::Environment::with_prefix("APP")
+                .prefix_separator("_")
+                .separator("__").try_parsing(true), // Maps "APP_APPLICATION__PORT" to application.port
+        )
         .build()?;
 
     let s1 = settings.try_deserialize::<Settings>();

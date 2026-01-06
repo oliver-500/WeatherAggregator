@@ -71,10 +71,6 @@ where
     let otlp_exporter = build_tracing_span_exporter(tracing_backend_settings.clone())
         .expect("Could not create OTLP tracing exporter.");
 
-    println!("1 --- {}", tracing_backend_settings.max_export_batch_size as usize);
-    println!("2 --- {}", tracing_backend_settings.max_queue_size as usize);
-    println!("3 --- {}", tracing_backend_settings.scheduled_delay_in_ms as u64);
-    println!("4 --- {}", tracing_backend_settings.max_concurrent_exports as usize  );
 
     let batch_config = BatchConfigBuilder::default()
         .with_max_export_batch_size(tracing_backend_settings.max_export_batch_size as usize)

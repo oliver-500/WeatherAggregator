@@ -66,6 +66,7 @@ pub struct TracingSettings {
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub timeout_in_ms: u16,
     pub domain_name: String,
+    pub scheme: String,
 }
 
 #[derive(serde::Deserialize, Debug)]

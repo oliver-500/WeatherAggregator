@@ -24,6 +24,15 @@ impl CacheServiceError {
         }
     }
 
+    pub fn get_sanitized_message(&self) -> String {
+        match self {
+            Self::CacheMissError(_, _) => self.get_message(),
+            Self::RequestValidationError(s) => s.clone().unwrap_or(String::default()),
+            _ => String::default(),
+        }
+
+    }
+
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::ConnectionError(_) => "CONNECTION_ERROR",
