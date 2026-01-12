@@ -1,10 +1,12 @@
+use std::net::IpAddr;
 use serde::{Serialize};
-use crate::org::unibl::etf::model::requests::upstream_current_weather_request::UpstreamCurrentWeatherRequest;
-use crate::org::unibl::etf::util::serializers::serialize_empty_string;
 
-#[derive(Serialize, Debug, Clone)]
+use crate::org::unibl::etf::model::requests::upstream_current_weather_request_by_coordinates::UpstreamCurrentWeatherRequestByCoordinates;
+use crate::org::unibl::etf::model::requests::upstream_current_weather_request_by_location::UpstreamCurrentWeatherRequestByLocation;
+
+
+#[derive(Debug, Clone, Serialize)]
 pub struct DownstreamCurrentWeatherRequest {
-
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lat: Option<f64>,
 
@@ -14,29 +16,46 @@ pub struct DownstreamCurrentWeatherRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub location_name: Option<String>,
 
-    pub limit: u16,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ip_address: Option<String>
 
-    #[serde(default = "default_provider")]
-    #[serde(serialize_with = "serialize_empty_string")]
-    pub provider: Option<String>,
 }
 
-impl TryFrom<&UpstreamCurrentWeatherRequest> for DownstreamCurrentWeatherRequest {
+impl TryFrom<&UpstreamCurrentWeatherRequestByLocation> for DownstreamCurrentWeatherRequest {
     type Error = String;
 
-    fn try_from(req: &UpstreamCurrentWeatherRequest) -> Result<Self, Self::Error> {
+    fn try_from(req: &UpstreamCurrentWeatherRequestByLocation) -> Result<Self, Self::Error> {
         Ok(Self {
-            lat: req.lat,
-            lon: req.lon,
-            location_name: req.location_name.clone(),
-            limit: req.limit,
-            provider: Some("".to_string()),
+            lat: None,
+            lon: None,
+            location_name: Some(req.location_name.clone()),
+            ip_address: None,
         })
     }
 }
 
+impl TryFrom<&UpstreamCurrentWeatherRequestByCoordinates> for DownstreamCurrentWeatherRequest {
+    type Error = String;
 
+    fn try_from(req: &UpstreamCurrentWeatherRequestByCoordinates) -> Result<Self, Self::Error> {
+        Ok(Self {
+            lat: Some(req.lat),
+            lon: Some(req.lon),
+            location_name: None,
+            ip_address: None,
+        })
+    }
+}
 
-// fn default_provider() -> String {
-//     "weatherapi.com".to_owned()
-// }
+impl TryFrom<&IpAddr> for DownstreamCurrentWeatherRequest {
+    type Error = String;
+
+    fn try_from(req: &IpAddr) -> Result<Self, Self::Error> {
+        Ok(Self {
+            lat: None,
+            lon: None,
+            location_name: None,
+            ip_address: Some(req.to_string()),
+        })
+    }
+}

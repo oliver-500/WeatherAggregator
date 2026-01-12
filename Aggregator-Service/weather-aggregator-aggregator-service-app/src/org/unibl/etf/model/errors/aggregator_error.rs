@@ -1,19 +1,23 @@
 use serde::{Deserialize, Serialize};
 use crate::org::unibl::etf::model::errors::cache_service_error::CacheError;
 use crate::org::unibl::etf::model::errors::external_api_adapter_error_message::{AdapterError, LocationCandidate};
+use crate::org::unibl::etf::model::responses::current_weather_response::CurrentWeatherResponse;
 
 #[derive(Serialize, Debug, Clone, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum AggregatorError {
-    AmbiguousLocationNameError(Vec<LocationCandidate>), // Keep this specific for the UI
+    AmbiguousLocationNameError(Vec<LocationCandidate>),
     RequestParametersValidationError(Option<String>),
     ServerError(Option<String>),
     LocationNotFoundError(Option<String>),
     ConnectionError(Option<String>),
     ResponseParsingError(Option<String>),
     WeatherDataUnavailableError,
-    CacheMissError(f64, f64),
+    CacheMissError,
     StoringCacheError(Option<String>),
+    LocalIpError,
+    IpLookupNotSupported,
+    MultipleCacheResultsWithSameNameError(Vec<CurrentWeatherResponse>),
 
 }
 
@@ -24,6 +28,7 @@ impl AggregatorError {
             Self::LocationNotFoundError(s) => Self::LocationNotFoundError(s.clone()),
             Self::RequestParametersValidationError(s) => Self::RequestParametersValidationError(s.clone()),
             Self::AmbiguousLocationNameError(s) => Self::AmbiguousLocationNameError(s.clone()),
+            Self::LocalIpError => Self::LocalIpError,
             _ => Self::ServerError(None),
         }
     }
@@ -32,6 +37,7 @@ impl AggregatorError {
             Self::LocationNotFoundError(s) => s.clone().unwrap_or(String::default()),
             Self::RequestParametersValidationError(s) => s.clone().unwrap_or(String::default()),
             Self::AmbiguousLocationNameError(_s) => self.get_message(),
+            Self::LocalIpError => self.get_message(),
             _ => String::default(),
         }
 
@@ -51,6 +57,7 @@ impl AggregatorError {
             },
             //AggregatorError::ServerError(s) => format!("ServerError: {}", s.clone().unwrap_or(String::from(""))),
             AggregatorError::ResponseParsingError(s) => format!("ResponseParsingError: {}", s.clone().unwrap_or(String::from(""))),
+            AggregatorError::LocalIpError => String::from("Request made with local ip address. Can not determine location by IP address."),
             _ => { String::default() }
         }
     }
@@ -69,10 +76,11 @@ impl AggregatorError {
             },
             AggregatorError::WeatherDataUnavailableError => {
                 404
-            }
+            },
+            AggregatorError::LocalIpError => 400,
             _ => {
                 500
-            }
+            },
         }
     }
 }
@@ -98,8 +106,8 @@ impl From<AdapterError> for AggregatorError {
 impl From<CacheError> for AggregatorError {
     fn from(code: CacheError) -> Self {
         match code {
-            CacheError::CacheMissError(lat, lon) => {
-                AggregatorError::CacheMissError(lat, lon)
+            CacheError::CacheMissError(_lat, _lon) => {
+                AggregatorError::CacheMissError
             }
             CacheError::RequestValidationError(s) => {
                 AggregatorError::RequestParametersValidationError(s)
@@ -109,6 +117,9 @@ impl From<CacheError> for AggregatorError {
             },
             CacheError::StoringCacheError(s) => {
                 AggregatorError::StoringCacheError(s)
+            },
+            CacheError::MultipleCacheResultsWithSameNameError(candidates) => {
+                AggregatorError::MultipleCacheResultsWithSameNameError(candidates)
             }
         }
     }

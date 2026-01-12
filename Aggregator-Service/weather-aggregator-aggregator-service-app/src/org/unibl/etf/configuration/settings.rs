@@ -40,6 +40,8 @@ pub struct ProviderSettings {
     pub port: u16,
     pub host: String,
     pub scheme: String,
+    #[serde(deserialize_with = "deserialize_bool_from_anything")]
+    pub ip_support: bool
 }
 
 #[derive(Deserialize, Debug)]

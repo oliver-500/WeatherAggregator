@@ -1,3 +1,11 @@
-pub mod upstream_current_weather_request;
+
 pub mod downstream_current_weather_request;
-pub mod store_current_weatcher_cache_request;
+pub mod store_current_weather_cache_request;
+pub mod upstream_current_weather_request_by_location;
+pub mod upstream_current_weather_request_by_coordinates;
+pub mod current_weather_query;
+pub mod current_weather_coordinates_query;
+pub mod current_weather_location_query;
+pub mod current_weather_ip_address_query;
+pub mod retrieve_current_weather_cache_request;
+

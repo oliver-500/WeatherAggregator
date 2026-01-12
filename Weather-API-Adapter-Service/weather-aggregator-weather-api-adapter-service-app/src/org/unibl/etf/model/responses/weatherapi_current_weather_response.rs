@@ -19,6 +19,8 @@ pub struct Location {
     pub name: Option<String>, // Location name
     #[serde(default)]
     pub country: Option<String>, //Country name
+    #[serde(default)]
+    pub region: Option<String>,
 }
 
 impl Default for Location {
@@ -28,6 +30,7 @@ impl Default for Location {
             lon: None,
             name: None,
             country: None,
+            region: None,
         }
     }
 }

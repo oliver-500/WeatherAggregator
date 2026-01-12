@@ -27,7 +27,6 @@ pub struct CurrentWeatherCacheResponse {
 
 #[derive(Deserialize, Debug, Serialize, Clone)]
 pub struct Location {
-
     #[serde(serialize_with = "serialize_empty_string")]
     pub name: Option<String>,
     #[serde(serialize_with = "serialize_empty_string")]
@@ -38,6 +37,10 @@ pub struct Location {
 
     #[serde(deserialize_with = "deserialize_f64_or_empty_string_as_none")]
     pub lon: Option<f64>,
+
+    #[serde(serialize_with = "serialize_empty_string")]
+    pub state_region_province_or_entity: Option<String>,
+
 }
 
 #[derive(Deserialize, Debug, Serialize, Clone)]

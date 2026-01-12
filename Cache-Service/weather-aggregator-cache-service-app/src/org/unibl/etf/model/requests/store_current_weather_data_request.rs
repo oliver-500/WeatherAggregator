@@ -9,4 +9,5 @@ pub struct StoreCurrentWeatherDataRequest {
     #[validate(range(min = -180.0, max = 180.0))]
     pub lon: f64,
     pub current_weather_data: CurrentWeatherCacheResponse,
+    pub location_names: Vec<String>,
 }

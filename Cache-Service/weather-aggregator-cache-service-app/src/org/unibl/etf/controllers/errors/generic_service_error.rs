@@ -41,7 +41,7 @@ impl fmt::Display for GenericServiceError {
 impl error::ResponseError for GenericServiceError {
     fn status_code(&self) -> StatusCode {
         let status_code : StatusCode = match self.error.code {
-            CacheServiceError::CacheMissError(_, _) => {
+            CacheServiceError::CacheMissError(_, _, _, _) => {
                 StatusCode::NOT_FOUND
             },
             CacheServiceError::RequestValidationError(_) => {

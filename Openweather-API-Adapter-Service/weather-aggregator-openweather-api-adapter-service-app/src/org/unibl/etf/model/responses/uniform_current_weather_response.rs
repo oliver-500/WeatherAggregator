@@ -1,4 +1,4 @@
-
+use celes::Country;
 use crate::org::unibl::etf::util::serializers::round_serialize;
 use crate::org::unibl::etf::util::serializers::serialize_and_round_empty_f64;
 use crate::org::unibl::etf::util::serializers::serialize_empty_string;
@@ -29,6 +29,8 @@ pub struct Location {
     pub country: Option<String>,
     pub lat: Option<f64>,
     pub lon: Option<f64>,
+    #[serde(serialize_with = "serialize_empty_string")]
+    pub state_region_province_or_entity: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -68,6 +70,12 @@ pub struct Weather {
     pub condition: Option<String>,
 }
 
+impl UniformCurrentWeatherResponse {
+    pub fn set_state_region_province_or_entity(&mut self, region: String) {
+        self.location.state_region_province_or_entity = Some(region.clone());
+    }
+}
+
 impl TryFrom<OpenWeatherAPICurrentWeatherResponse> for UniformCurrentWeatherResponse {
     type Error = AdapterServiceError;
 
@@ -82,13 +90,31 @@ impl TryFrom<OpenWeatherAPICurrentWeatherResponse> for UniformCurrentWeatherResp
         let wind = src.wind.unwrap_or(Wind_OpenWeather::default());
         let temp = main.temp.ok_or(AdapterServiceError::InvalidProviderResponseError(Some("Missing mandatory value. Empty main:temp field found".to_string())))?;
 
+
+        let condition = match &weather.description {
+            Some(description) => Some(capitalize(description.clone().as_ref())),
+            None => None,
+        };
+
+        let country = match sys.country {
+            Some(country) => {
+                Some(Country::from_alpha2(country)
+                    .and_then(|c| Ok(c.to_string()))
+                    .map_err(|_e| {
+                        AdapterServiceError::InvalidProviderResponseError(Some("Invalid country code.".to_string()))
+                })?)
+            },
+            None => None,
+        };
+
         Ok(UniformCurrentWeatherResponse {
             provider: "openweathermap.org".into(), //env!!!
             location: Location {
                 name: src.name,
-                country: sys.country,
+                country: country,
                 lat: coordinates.lat,
                 lon: coordinates.lon,
+                state_region_province_or_entity: None
             },
             weather: Weather {
                 temp_metric: temp,
@@ -98,7 +124,7 @@ impl TryFrom<OpenWeatherAPICurrentWeatherResponse> for UniformCurrentWeatherResp
                 humidity: Some(main.humidity.unwrap_or(f64::default()) as u8),
                 pressure_metric: main.pressure,
                 pressure_imperial: main.pressure.map(|mb| mb_to_inhg(mb)),
-                condition: weather.description.clone(),
+                condition: condition,
             },
             wind: Wind {
                 speed_metric: wind.speed,
@@ -111,6 +137,14 @@ impl TryFrom<OpenWeatherAPICurrentWeatherResponse> for UniformCurrentWeatherResp
             observed_at_timestamp: src.dt,
 
         })
+    }
+}
+
+pub fn capitalize(s: &str) -> String {
+    let mut c = s.chars();
+    match c.next() {
+        None => String::new(),
+        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
     }
 }
 

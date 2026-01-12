@@ -29,7 +29,9 @@ pub struct Location {
     #[serde(serialize_with = "serialize_empty_string")]
     pub country: Option<String>,
     pub lat: f64,
-    pub lon: f64
+    pub lon: f64,
+    #[serde(serialize_with = "serialize_empty_string")]
+    pub state_region_province_or_entity: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Serialize, Clone)]

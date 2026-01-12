@@ -1,3 +1,4 @@
+use celes::Country;
 use reqwest::StatusCode;
 use reqwest_middleware::ClientWithMiddleware;
 use crate::org::unibl::etf::configuration::settings::GeocodingServiceSettings;
@@ -5,7 +6,8 @@ use crate::org::unibl::etf::configuration::settings::GeocodingServiceSettings;
 use crate::org::unibl::etf::model::errors::adapter_service_error::AdapterServiceError;
 
 use crate::org::unibl::etf::model::errors::geocoding_error::{GeocodingGenericError};
-use crate::org::unibl::etf::model::responses::geocoding_response::GeocodingResponse;
+use crate::org::unibl::etf::model::responses::geocoding_response::{GeocodingResponse, LocationCandidate};
+use crate::org::unibl::etf::model::responses::uniform_current_weather_response::capitalize;
 
 #[derive(Debug)]
 pub struct GeocodingService {
@@ -26,7 +28,7 @@ impl GeocodingService {
         client: &ClientWithMiddleware,
         limit: u8,
         settings: &GeocodingServiceSettings,
-    ) -> Result<(f64, f64), AdapterServiceError> {
+    ) -> Result<LocationCandidate, AdapterServiceError> {
         let response = client
             .get(format!("{}://{}:{}/api/v1/geocode", settings.scheme,settings.host, settings.port))
             .query(&[
@@ -44,7 +46,7 @@ impl GeocodingService {
                 AdapterServiceError::ServerError(Some(e.to_string()))
             })?;
 
-            let data: GeocodingResponse = serde_json::from_str(&body_text)
+            let mut data: GeocodingResponse = serde_json::from_str(&body_text)
                 .map_err(|e| {
                     AdapterServiceError::GeocodingResponseParsingError(Some(format!(
                         "Failed to parse Geocoding Service success body response. JSON Error: {} | Raw Body: {}",
@@ -56,10 +58,21 @@ impl GeocodingService {
                 tracing::error!("No candidates for geocoding found in response.");
                 return Err(AdapterServiceError::LocationNotFoundError(Some(location.to_string())));
             } else if data.candidates.len() == 1 {
-                let geocoding_response = data.candidates.get(0).unwrap();
-                return Ok((geocoding_response.lat, geocoding_response.lon));
+                return Ok(data.candidates.get(0).unwrap().clone());
             } else {
-                tracing::info!("Found multiple possible geocoding candidates for location found in request.");
+                data.candidates.iter_mut().for_each(|candidate| {
+                    let country_name = Country::from_alpha2(&candidate.country);
+                    match country_name {
+                        Ok(country_name) => {
+                            candidate.country = country_name.to_string();
+                        },
+                        Err(_e) => {
+                            tracing::error!("Invalid country code");
+                        }
+                    }
+
+                });
+                tracing::info!("Found multiple possible geocoding candidates for request location.");
                 return Err(AdapterServiceError::AmbiguousLocationNameError(data.candidates));
             }
         }

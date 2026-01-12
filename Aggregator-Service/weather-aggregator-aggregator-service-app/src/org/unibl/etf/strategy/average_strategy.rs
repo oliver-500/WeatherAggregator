@@ -21,6 +21,7 @@ impl WeatherStrategy for AverageStrategy {
                 country: valid.iter().find_map(|r| r.location.country.clone()),
                 lat: avg_opt_f64(valid.iter().map(|r| Some(r.location.lat))).unwrap_or(0.0),
                 lon: avg_opt_f64(valid.iter().map(|r| Some(r.location.lon))).unwrap_or(0.0),
+                state_region_province_or_entity:  valid.iter().find_map(|r| r.location.state_region_province_or_entity.clone())
             },
 
             weather: Weather {

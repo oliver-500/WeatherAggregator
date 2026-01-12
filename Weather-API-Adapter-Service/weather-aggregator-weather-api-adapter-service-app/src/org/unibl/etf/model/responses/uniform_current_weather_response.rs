@@ -29,6 +29,8 @@ pub struct Location {
     pub country: Option<String>,
     pub lat: Option<f64>,
     pub lon: Option<f64>,
+    #[serde(serialize_with = "serialize_empty_string")]
+    pub state_region_province_or_entity: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -92,6 +94,7 @@ impl TryFrom<WeatherAPICurrentWeatherResponse> for UniformCurrentWeatherResponse
                 country: location.country,
                 lat: location.lat,
                 lon: location.lon,
+                state_region_province_or_entity: location.region
             },
             weather: Weather {
                 temp_metric: temp_c,

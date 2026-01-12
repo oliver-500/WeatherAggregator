@@ -1,6 +1,7 @@
 use crate::org::unibl::etf::util::deserializers::deserialize_timestamp;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Deserializer};
+use crate::org::unibl::etf::model::responses::current_weather_response::CurrentWeatherResponse;
 
 #[derive(Debug, Deserialize)]
 pub struct CacheServiceError {
@@ -22,6 +23,7 @@ pub enum CacheError {
     CacheMissError(f64, f64),
     RequestValidationError(Option<String>),
     StoringCacheError(Option<String>),
+    MultipleCacheResultsWithSameNameError(Vec<CurrentWeatherResponse>),
     ServerError,
 }
 
@@ -32,6 +34,7 @@ enum RawCacheError {
     RequestValidationError(Option<String>),
     StoringCacheError(Option<String>),
     ServerError,
+    MultipleCacheResultsWithSameNameError(Vec<CurrentWeatherResponse>),
     #[serde(other)]
     Unknown,
 }
@@ -57,6 +60,9 @@ where
         },
         RawCacheError::StoringCacheError(msg) => {
             Ok(CacheError::StoringCacheError(msg))
+        },
+        RawCacheError::MultipleCacheResultsWithSameNameError(results) => {
+            Ok(CacheError::MultipleCacheResultsWithSameNameError(results))
         }
     }
 }
