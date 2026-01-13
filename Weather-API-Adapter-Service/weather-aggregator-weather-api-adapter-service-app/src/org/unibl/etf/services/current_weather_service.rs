@@ -41,7 +41,7 @@ impl CurrentWeatherService {
     }
 
     #[tracing::instrument(name = "Get Current Weather Data by Coordinates or Location name Service", skip(client, provider_settings))]
-    pub async fn get_current_weather_by_coordinates_or_location_name(
+    pub async fn get_current_weather_data(
         &self,
         request: &CurrentWeatherRequest,
         client: &ClientWithMiddleware,
@@ -66,7 +66,18 @@ impl CurrentWeatherService {
         }
 
         let q_argument = if request.lat.is_none() || request.lon.is_none() {
-            request.location_name.clone().unwrap_or("".to_string())
+            if request.location_name.is_some() {
+                request.location_name.clone().unwrap_or("".to_string())
+            }
+            else {
+                if request.ip_address.is_some() {
+                    request.ip_address.clone().unwrap()
+                }
+                else {
+                    return Err(AdapterServiceError::ServerError(None));
+                }
+
+            }
         }
         else {
             format!("{},{}", &request.lat.clone().unwrap().to_string(), &request.lon.clone().unwrap().to_string())

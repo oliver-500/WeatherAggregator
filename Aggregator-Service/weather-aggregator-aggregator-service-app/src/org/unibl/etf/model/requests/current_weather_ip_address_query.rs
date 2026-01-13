@@ -27,11 +27,11 @@ impl CurrentWeatherQuery for CurrentWeatherIpAddressQuery {
     }
 
     fn build_retrieve_cache_request(&self) -> Result<Self::RetrieveCacheRequest, AggregatorError> {
-        Err(AggregatorError::ServerError(None))
+        Err(AggregatorError::CacheNotSupported(None))
     }
 
     fn build_store_cache_request(&self, _current_weather_response: &CurrentWeatherResponse, _location_names: Vec<String>) -> Result<Self::StoreCacheRequest, AggregatorError> {
-        Err(AggregatorError::ServerError(None))
+        Err(AggregatorError::CacheNotSupported(None))
     }
 
     async fn cache_get(
@@ -52,7 +52,7 @@ impl CurrentWeatherQuery for CurrentWeatherIpAddressQuery {
         if provider.ip_support == false {
             return Err(AggregatorError::IpLookupNotSupported);
         }
-        let url = format!("{}://{}:{}/api/v1/current_weather_by_ip_address", provider.scheme, provider.host, provider.port);
+        let url = format!("{}://{}:{}/api/v1/current_weather", provider.scheme, provider.host, provider.port);
 
         let response = client
             .get(url)

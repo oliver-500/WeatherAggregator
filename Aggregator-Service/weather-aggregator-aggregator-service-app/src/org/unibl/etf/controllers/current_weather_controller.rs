@@ -1,5 +1,5 @@
 use std::net::IpAddr;
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use actix_web::dev::ConnectionInfo;
 use actix_web_validator::Query;
 use reqwest_middleware::ClientWithMiddleware;
@@ -37,9 +37,9 @@ async fn get_current_weather_data_by_coordinates(
 
     Ok(current_weather_service.get_current_weather(
         query,
-        http_client.as_ref(),
-        providers_configuration.as_ref(),
-        cache_service_settings.as_ref(),
+        http_client,
+        providers_configuration,
+        cache_service_settings,
     ).await
            .and_then(|current_weather_data| Ok(HttpResponse::Ok().json(current_weather_data)))
            .map_err(|e| {
@@ -67,9 +67,9 @@ async fn get_current_weather_data_by_location(
     
     Ok(current_weather_service.get_current_weather(
         query,
-        http_client.as_ref(),
-        providers_configuration.as_ref(),
-        cache_service_settings.as_ref(),
+        http_client,
+        providers_configuration,
+        cache_service_settings,
     ).await
         .and_then(|current_weather_data| Ok(HttpResponse::Ok().json(current_weather_data)))
         .map_err(|e| {
@@ -88,7 +88,8 @@ async fn get_current_weather_data_by_ip_address(
     providers_configuration: web::Data<Vec<ProviderSettings>>,
     cache_service_settings: web::Data<CacheServiceSettings>,
     current_weather_service: web::Data<CurrentWeatherService>,
-    conn: web::Data<ConnectionInfo>
+    conn: actix_web::dev::ConnectionInfo,
+    req: HttpRequest
 ) -> Result<impl Responder, GenericServiceError> {
     let ip_str = conn.realip_remote_addr().unwrap_or("");
 
@@ -102,11 +103,24 @@ async fn get_current_weather_data_by_ip_address(
         },
     };
 
-    if is_local_ip(ip) {
-        return Err(GenericServiceError {
-            error: GenericServiceErrorDetails::new_aggregator_error(AggregatorError::LocalIpError)
-        });
-    }
+    let ip = if is_local_ip(ip) {
+        let user_ip = req.headers()
+            .get("x-forwarded-for")
+            .and_then(|h| h.to_str().ok())
+            .map(|s| s.split(',').next().unwrap_or(s));
+
+        if let user_ip = Some(ip) {
+            println!("found ip {}", ip );
+            ip
+        } else {
+            return Err(GenericServiceError {
+                error: GenericServiceErrorDetails::new_aggregator_error(AggregatorError::LocalIpError)
+            });
+        }
+    } else {
+        ip
+    };
+
 
     let query = CurrentWeatherIpAddressQuery {
         request: ip,
@@ -114,9 +128,9 @@ async fn get_current_weather_data_by_ip_address(
 
     Ok(current_weather_service.get_current_weather(
         query,
-        http_client.as_ref(),
-        providers_configuration.as_ref(),
-        cache_service_settings.as_ref(),
+        http_client,
+        providers_configuration,
+        cache_service_settings,
     ).await
         .and_then(|current_weather_data| Ok(HttpResponse::Ok().json(current_weather_data)))
         .map_err(|e| {

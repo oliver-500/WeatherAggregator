@@ -18,6 +18,7 @@ pub enum AggregatorError {
     LocalIpError,
     IpLookupNotSupported,
     OnlyPotentialMatchesFoundError(Vec<CurrentWeatherResponse>),
+    CacheNotSupported(Option<String>),
 
 }
 

@@ -1,6 +1,7 @@
-
+use actix_web::web;
 use futures::future::join_all;
 use reqwest_middleware::ClientWithMiddleware;
+use tracing::Instrument;
 use crate::org::unibl::etf::model::errors::aggregator_error::AggregatorError;
 use crate::org::unibl::etf::configuration::settings::{CacheServiceSettings, ProviderSettings};
 use crate::org::unibl::etf::model::errors::external_api_adapter_error_message::LocationCandidate;
@@ -24,31 +25,49 @@ impl CurrentWeatherService {
     }
 
     #[tracing::instrument(name = "Get Current Weather Data Service", skip(client, cache_service_settings, providers_settings))]
-    pub async fn get_current_weather<Q: CurrentWeatherQuery + std::fmt::Debug + Clone>(
+    pub async fn get_current_weather<Q: CurrentWeatherQuery + std::fmt::Debug + Clone + 'static>(
         &self,
         query: Q,
-        client: &ClientWithMiddleware,
-        providers_settings: &Vec<ProviderSettings>,
-        cache_service_settings: &CacheServiceSettings,
+        client: web::Data<ClientWithMiddleware>,
+        providers_settings: web::Data<Vec<ProviderSettings>>,
+        cache_service_settings: web::Data<CacheServiceSettings>,
     ) -> Result<CurrentWeatherResponse, AggregatorError> {
-        let get_cache_req = query.build_retrieve_cache_request()?;
-        let cache_candidates: Vec<CurrentWeatherResponse>  = match query.cache_get(&get_cache_req, client, cache_service_settings).await {
-            Ok(cached_data) => {
-                tracing::info!("Cache hit for current weather data. {:?}", cached_data);
-                return Ok(cached_data);
-            },
-            Err(error) => {
-                match error {
-                    AggregatorError::OnlyPotentialMatchesFoundError(candidates) => {
-                        candidates
+        let get_cache_req = query.build_retrieve_cache_request();
+
+        let cache_candidates: Vec<CurrentWeatherResponse> = match get_cache_req {
+            Ok(get_cache_req) => {
+                match query.cache_get(&get_cache_req, client.as_ref(), cache_service_settings.as_ref()).await {
+                    Ok(cached_data) => {
+                        tracing::info!("Cache hit for current weather data. {:?}", cached_data);
+                        return Ok(cached_data);
                     },
-                    _ => {
-                        tracing::error!("Was not able to get cached current weather data.");
+                    Err(error) => {
+                        match error {
+                            AggregatorError::OnlyPotentialMatchesFoundError(candidates) => {
+                                candidates
+                            },
+                            _ => {
+                                tracing::error!("Was not able to get cached current weather data.");
+                                Vec::new()
+                            }
+                        }
+                    }
+                }
+            },
+            Err(e) => {
+                match e {
+                    AggregatorError::CacheNotSupported(_) => {
+                        tracing::error!("Cache not supported. {:?}", e);
                         Vec::new()
+                    },
+                    e => {
+                        return Err(e);
                     }
                 }
             }
         };
+
+
 
         let req = query.build_downstream_request()?;
         let futures = providers_settings.iter().map(|provider| {
@@ -135,21 +154,36 @@ impl CurrentWeatherService {
             .resolve(&normalized)
             .ok_or(AggregatorError::WeatherDataUnavailableError)?;
 
-        let mut location_names: Vec<String> = normalized
-            .iter()
-            .filter_map(|res| {
-                res.data.as_ref().and_then(|d| d.location.name.clone())
-            })
-            .collect();
 
-        location_names.sort();
-        location_names.dedup();
+        let query_clone = query.clone();
+        let result_clone = result.clone();
+        let cache_service_settings_clone = cache_service_settings.clone();
+        let client_clone = client.clone();
 
-        let store_cache_request = query.build_store_cache_request(&result, location_names)?;
 
-        let _ = query
-            .cache_set(&store_cache_request, client, cache_service_settings)
-            .await;
+        actix_web::rt::spawn(async move {
+            let mut location_names: Vec<String> = normalized
+                .iter()
+                .filter_map(|res| {
+                    res.data.as_ref().and_then(|d| d.location.name.clone())
+                })
+                .collect();
+
+            location_names.sort();
+            location_names.dedup();
+
+            let store_cache_request = query_clone.build_store_cache_request(&result_clone, location_names);
+            match store_cache_request {
+                Ok(store_cache_request) => {
+                    let _ = query_clone
+                        .cache_set(&store_cache_request, &client_clone, cache_service_settings_clone.as_ref())
+                        .await;
+                },
+                Err(e) => {
+                    tracing::error!("Storing cache error: {:?}", e);
+                }
+            }
+        }.instrument(tracing::Span::current()));
 
         Ok(result)
     }

@@ -6,6 +6,8 @@ pub struct CurrentWeatherRequestRaw {
     pub location_name: Option<String>,
     pub lat: Option<f64>,
     pub lon: Option<f64>,
+    pub ip_address: Option<String>
+
 }
 
 #[derive(Deserialize, Validate, Debug)]
@@ -14,6 +16,7 @@ pub struct CurrentWeatherRequest {
     pub location_name: Option<String>,
     pub lat: Option<f64>,
     pub lon: Option<f64>,
+    pub ip_address: Option<String>
 
 }
 
@@ -23,7 +26,9 @@ impl TryFrom<CurrentWeatherRequestRaw> for CurrentWeatherRequest {
     fn try_from(raw: CurrentWeatherRequestRaw) -> Result<Self, Self::Error> {
         if (raw.location_name.is_none() || raw.location_name.clone().unwrap().is_empty())
             && (raw.lat.is_none() || raw.lon.is_none()) {
-            return Err(String::from("Location name or coordinates (latitude and longitude) should be provided"));
+            if raw.ip_address.is_none() {
+                return Err(String::from("Location name, coordinates (latitude and longitude) or ip address should be provided"));
+            }
         }
 
         let lat_validated = match raw.lat {
@@ -48,6 +53,7 @@ impl TryFrom<CurrentWeatherRequestRaw> for CurrentWeatherRequest {
                 lat: raw.lat,
                 lon: raw.lon,
                 location_name: raw.location_name,
+                ip_address: raw.ip_address
             });
         } else if !lat_validated {
             return Err(format!("Invalid latitude: {}", raw.lat.ok_or("")?));
