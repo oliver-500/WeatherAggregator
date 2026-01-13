@@ -54,7 +54,7 @@ impl CurrentWeatherRepository {
         &self,
         req: &RetrieveCurrentWeatherCacheRequest,
         redis_pool: &deadpool_redis::Pool,
-    ) -> Result<Vec<String>, CacheServiceError> {
+    ) -> Result<Option<String>, CacheServiceError> {
         let mut conn = match redis_pool.get().await {
             Ok(c) => c,
             Err(e) => {
@@ -62,8 +62,6 @@ impl CurrentWeatherRepository {
                 return Err(CacheServiceError::ServerError(Some(error_message)));
             }
         };
-
-        let mut cached_data: Vec<String> = Vec::new();
 
         if req.country.is_some() && req.state.is_some() {
             let cache_key = format!("weather:current:{}:{}:{}", req.country.clone().unwrap(),
@@ -75,15 +73,18 @@ impl CurrentWeatherRepository {
                     CacheServiceError::RedisError(Some(e.code().unwrap_or("").to_string()), Some(e.to_string()))
                 },
                 )?;
-            cached_data.push(result.unwrap());
+
+            return Ok(result);
         }
         else {
+            let mut cached_data: Vec<String> = Vec::new();
+
             let pattern =  format!(
             "weather:current:{}:{}:{}",
             req.country.clone().unwrap_or("*".to_string()),
             req.state.clone().unwrap_or("*".to_string()),
             req.location_name.clone().unwrap(),
-        );
+            );
             let mut iter = conn.scan_match::<_, String>(pattern).await.map_err(|e| {
                 CacheServiceError::RedisError(Some(e.code().unwrap_or("").to_string()), Some(e.to_string()))
             })?;
@@ -95,7 +96,7 @@ impl CurrentWeatherRepository {
             }
 
             if keys.is_empty() {
-                return Ok(Vec::new());
+                return Err(CacheServiceError::CacheMissError(None, None, req.country.clone(), req.state.clone()));
             }
 
             let mut conn = match redis_pool.get().await {
@@ -111,9 +112,9 @@ impl CurrentWeatherRepository {
                     CacheServiceError::RedisError(Some(e.code().unwrap_or("").to_string()), Some(e.to_string()))
                 })?;
             cached_data = values.into_iter().flatten().collect();
+            return Err(CacheServiceError::MultipleCachedResultsError(cached_data));
         }
 
-        Ok(cached_data)
     }
 
     #[tracing::instrument(name = "Store Current Weather Cache Data Repository", skip(redis_pool))]

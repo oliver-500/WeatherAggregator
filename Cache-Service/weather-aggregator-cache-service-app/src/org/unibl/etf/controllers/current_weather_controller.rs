@@ -51,7 +51,6 @@ async fn get_current_weather_cache_data_by_location(
     query: Query<RetrieveCurrentWeatherCacheRequest>,
     redis_pool: web::Data<deadpool_redis::Pool>,
 ) -> Result<impl Responder, GenericServiceError> {
-    println!("joj");
     Ok(cache_service
         .get_current_weather_cache_data_by_location(
             query.as_ref(),

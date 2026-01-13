@@ -66,7 +66,7 @@ impl CacheService {
         req: &RetrieveCurrentWeatherCacheRequest,
         redis_pool: &deadpool_redis::Pool,
     ) -> Result<CurrentWeatherCacheResponse, CacheServiceError> {
-        let cached_data = match self.current_weather_repository
+        match self.current_weather_repository
             .retrieve_current_weather_cache_result_by_location(
                 req,
                 redis_pool
@@ -74,47 +74,51 @@ impl CacheService {
             .await {
             Ok(cached_data) => {
                 tracing::info!("Successfully retrieved current weather cache data {:?}", cached_data);
-                cached_data
-            },
-            Err(e) => {
-                tracing::info!("Was not able to get current weather cache data with error: {}", e.get_message());
-                return Err(e);
-            }
-        };
+                let cached_data = match cached_data {
+                    None => {
+                        return Err(CacheServiceError::ResponseParsingError(Some("Error while parsing repository response".to_string())));
+                    }
+                    Some(data) => {
+                        data
+                    }
+                };
 
-        match cached_data.len() {
-            0 => {
-                tracing::info!("Cache miss. No cached weather data for such request");
-                return Err(CacheServiceError::CacheMissError(req.lat.clone(), req.lon.clone(), req.location_name.clone(), req.country.clone()));
-            }
-            1 => {
-                let result: Result<CurrentWeatherCacheResponse, _> = serde_json::from_str(&cached_data[0]);
+                let result: Result<CurrentWeatherCacheResponse, _> = serde_json::from_str(&cached_data);
                 match result {
                     Ok(data) => {
-                        Ok(data)
+                        return Ok(data);
                     }
                     Err(e) => {
-                        return Err(CacheServiceError::ResponseParsingError(Some(e.to_string())));
+                        tracing::info!("Error while parsing one of results. Item: {}, Error: {}", cached_data, e.to_string());
+                        return Err(CacheServiceError::ResponseParsingError(Some("Failed to parse response".to_string())));
                     }
-                }
+                };
             },
-            _n => {
-                let mut candidates: Vec<CurrentWeatherCacheResponse> = Vec::new();
+            Err(e) => {
+                match e {
+                    CacheServiceError::MultipleCachedResultsError(cached_data) => {
+                        let mut candidates: Vec<CurrentWeatherCacheResponse> = Vec::new();
 
-                for item in cached_data {
-                    let result: Result<CurrentWeatherCacheResponse, _> = serde_json::from_str(&item);
-                    match result {
-                        Ok(data) => {
-                            candidates.push(data);
+                        for item in cached_data {
+                            let result: Result<CurrentWeatherCacheResponse, _> = serde_json::from_str(&item);
+                            match result {
+                                Ok(data) => {
+                                    candidates.push(data);
+                                }
+                                Err(e) => {
+                                    tracing::info!("Error while parsing one of results. Item: {}, Error: {}", item, e.to_string())
+                                }
+                            }
                         }
-                        Err(e) => {
-                            tracing::info!("Error while parsing one of results. Item: {}, Error: {}", item, e.to_string())
-                        }
+                        return Err(CacheServiceError::OnlyPotentialMatchesFoundError(candidates));
+                    },
+                    _ => {
+                        tracing::info!("Was not able to get current weather cache data with error: {}", e.get_message());
+                        return Err(e);
                     }
                 }
-                return Err(CacheServiceError::MultipleCacheResultsWithSameNameError(candidates));
             }
-        }
+        };
     }
 
     #[tracing::instrument(name = "Store Current Weather Data Cache Service",

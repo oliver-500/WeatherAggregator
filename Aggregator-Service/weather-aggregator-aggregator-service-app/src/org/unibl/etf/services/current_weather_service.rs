@@ -39,7 +39,7 @@ impl CurrentWeatherService {
             },
             Err(error) => {
                 match error {
-                    AggregatorError::MultipleCacheResultsWithSameNameError(candidates) => {
+                    AggregatorError::OnlyPotentialMatchesFoundError(candidates) => {
                         candidates
                     },
                     _ => {

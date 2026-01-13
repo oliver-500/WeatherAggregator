@@ -14,10 +14,7 @@ pub enum GeocodingServiceError {
     RedisError(Option<String>, Option<String>),
 }
 
-
-
 impl GeocodingServiceError {
-
     pub fn get_sanitized_error(&self) -> GeocodingServiceError {
         match self {
             Self::LocationNotFoundError(s) => Self::LocationNotFoundError(s.clone()),
@@ -35,7 +32,6 @@ impl GeocodingServiceError {
         }
 
     }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::ConnectionError(_) => "CONNECTION_ERROR",
@@ -48,8 +44,6 @@ impl GeocodingServiceError {
             Self::RedisError(_, _) => "REDIS_ERROR",
         }
     }
-
-
     pub fn get_message(&self) -> String {
         match self {
             GeocodingServiceError::ResponseParsingError(msg) => msg.clone().unwrap_or(String::default()),
@@ -69,14 +63,11 @@ impl GeocodingServiceError {
                 msg.clone().unwrap_or(String::default())
             },
             GeocodingServiceError::RateLimitExceeded => {
-                format!("Rate limit exceeded for the geocoding provider.")
+                "Rate limit exceeded for the geocoding provider.".to_string()
             },
             GeocodingServiceError::RedisError(_, msg) => msg.clone().unwrap_or(String::default()),
-
-            // _ => { String::default() }
         }
     }
-
     pub fn as_numeric(&self) -> u16 {
         match self {
             GeocodingServiceError::LocationNotFoundError(_) => 1000,

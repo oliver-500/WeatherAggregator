@@ -11,7 +11,8 @@ pub enum CacheServiceError {
     RequestValidationError(Option<String>),
     RedisError(Option<String>, Option<String>),
     StoringCacheError(Option<String>),
-    MultipleCacheResultsWithSameNameError(Vec<CurrentWeatherCacheResponse>)
+    OnlyPotentialMatchesFoundError(Vec<CurrentWeatherCacheResponse>),
+    MultipleCachedResultsError(Vec<String>),
 }
 
 
@@ -23,7 +24,7 @@ impl CacheServiceError {
             Self::CacheMissError(lat, lon, location_name, country) =>
                 Self::CacheMissError(lat.clone(), lon.clone(), location_name.clone(), country.clone()),
             Self::RequestValidationError(err) => Self::RequestValidationError(err.clone()),
-            Self::MultipleCacheResultsWithSameNameError(candidates) => Self::MultipleCacheResultsWithSameNameError(candidates.clone()),
+            Self::OnlyPotentialMatchesFoundError(candidates) => Self::OnlyPotentialMatchesFoundError(candidates.clone()),
             _ => Self::ServerError(None),
         }
     }
@@ -46,7 +47,8 @@ impl CacheServiceError {
             Self::RequestValidationError(_) => "REQUEST_VALIDATION_ERROR",
             Self::RedisError(_, _) => "REDIS_ERROR",
             Self::StoringCacheError(_) => "STORING_CACHE_ERROR",
-            Self::MultipleCacheResultsWithSameNameError(_) => "MULTIPLE_CACHE_RESULTS_WITH_SAME_NAME_ERROR",
+            Self::OnlyPotentialMatchesFoundError(_) => "ONLY_POTENTIAL_MATCHES_FOUND_ERROR",
+            Self::MultipleCachedResultsError(_) => "MULTIPLE_CACHE_RESULTS_ERROR",
         }
     }
 
@@ -68,8 +70,8 @@ impl CacheServiceError {
                 }
 
             },
-            CacheServiceError::MultipleCacheResultsWithSameNameError(_results) => {
-                format!("Multiple locations with the same name found")
+            CacheServiceError::OnlyPotentialMatchesFoundError(_results) => {
+                format!("Only potential matched found for requested location.")
             }
             CacheServiceError::RedisError(_, msg) => msg.clone().unwrap_or(String::default()),
             _ => { String::default() }
@@ -85,7 +87,8 @@ impl CacheServiceError {
             CacheServiceError::ResponseParsingError(_) => 1004,
             CacheServiceError::RedisError(_, _) => 1005,
             CacheServiceError::StoringCacheError(_) => 1007,
-            CacheServiceError::MultipleCacheResultsWithSameNameError(_) => 1008,
+            CacheServiceError::OnlyPotentialMatchesFoundError(_) => 1008,
+            CacheServiceError::MultipleCachedResultsError(_) => 1009,
         }
     }
 }

@@ -17,7 +17,7 @@ pub enum AggregatorError {
     StoringCacheError(Option<String>),
     LocalIpError,
     IpLookupNotSupported,
-    MultipleCacheResultsWithSameNameError(Vec<CurrentWeatherResponse>),
+    OnlyPotentialMatchesFoundError(Vec<CurrentWeatherResponse>),
 
 }
 
@@ -118,8 +118,8 @@ impl From<CacheError> for AggregatorError {
             CacheError::StoringCacheError(s) => {
                 AggregatorError::StoringCacheError(s)
             },
-            CacheError::MultipleCacheResultsWithSameNameError(candidates) => {
-                AggregatorError::MultipleCacheResultsWithSameNameError(candidates)
+            CacheError::OnlyPotentialMatchesFoundError(candidates) => {
+                AggregatorError::OnlyPotentialMatchesFoundError(candidates)
             }
         }
     }

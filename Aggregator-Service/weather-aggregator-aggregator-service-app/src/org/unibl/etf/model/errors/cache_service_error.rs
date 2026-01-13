@@ -23,7 +23,7 @@ pub enum CacheError {
     CacheMissError(f64, f64),
     RequestValidationError(Option<String>),
     StoringCacheError(Option<String>),
-    MultipleCacheResultsWithSameNameError(Vec<CurrentWeatherResponse>),
+    OnlyPotentialMatchesFoundError(Vec<CurrentWeatherResponse>),
     ServerError,
 }
 
@@ -34,7 +34,7 @@ enum RawCacheError {
     RequestValidationError(Option<String>),
     StoringCacheError(Option<String>),
     ServerError,
-    MultipleCacheResultsWithSameNameError(Vec<CurrentWeatherResponse>),
+    OnlyPotentialMatchesFoundError(Vec<CurrentWeatherResponse>),
     #[serde(other)]
     Unknown,
 }
@@ -61,8 +61,8 @@ where
         RawCacheError::StoringCacheError(msg) => {
             Ok(CacheError::StoringCacheError(msg))
         },
-        RawCacheError::MultipleCacheResultsWithSameNameError(results) => {
-            Ok(CacheError::MultipleCacheResultsWithSameNameError(results))
+        RawCacheError::OnlyPotentialMatchesFoundError(results) => {
+            Ok(CacheError::OnlyPotentialMatchesFoundError(results))
         }
     }
 }
