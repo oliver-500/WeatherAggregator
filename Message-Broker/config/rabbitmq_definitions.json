@@ -1,0 +1,56 @@
+{
+    "users": [
+		{
+			"name": "admin",
+			"password": "h2_5423ew22as",		
+			"tags": "administrator"
+		},
+	
+        {
+            "name": "weather-aggregator-user-identity-service-app",
+            "password": "432fre243qa",
+            "hashing_algorithm": "rabbit_password_hashing_sha256",
+			"tags": ""
+        },
+        {
+            "name": "weather-aggregator-user-preferences-service-app",
+            "password": "432df342ads",
+            "hashing_algorithm": "rabbit_password_hashing_sha256",
+			"tags": ""
+        },
+		{
+            "name": "weather-aggregator-user-profile-service-app",
+            "password": "342sa432fd43",
+            "hashing_algorithm": "rabbit_password_hashing_sha256",
+			"tags": ""
+        }
+    ],
+    "vhosts": [
+        {
+            "name": "/weather-aggregator"
+        }
+    ],
+    "permissions": [
+        {
+            "user": "weather-aggregator-user-identity-service-app",
+            "vhost": "/weather-aggregator",
+            "configure": "^user_events$",
+            "write": "^user_events$",
+            "read": "^user_events$"
+        },
+        {
+            "user": "weather-aggregator-user-preferences-service-app",
+            "vhost": "/weather-aggregator",
+            "configure": "^user_events$",
+			"write": "^user_events$",
+            "read": "^user_events$"
+        },
+		{
+            "user": "weather-aggregator-user-profile-service-app",
+            "vhost": "/weather-aggregator",
+            "configure": "^user_events$",
+			"write": "^user_events$",
+            "read": "^user_events$"
+        }
+    ]
+}

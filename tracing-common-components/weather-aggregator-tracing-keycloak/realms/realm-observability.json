@@ -1,0 +1,39 @@
+{
+  "realm": "observability",
+  "enabled": true,
+  "clients": [
+    {
+      "clientId": "jaeger-ui",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "3424pwqsaq24r",
+      "redirectUris": [
+        "https://localhost:443/oauth2/callback"
+      ],
+      "webOrigins": [
+        "https://weather-aggregator-tracing"
+      ],
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+	  "email": "admin@example.com",
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "User",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-use std::net::IpAddr;
+use std::net::{IpAddr};
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use actix_web::dev::ConnectionInfo;
 use actix_web_validator::Query;
@@ -88,7 +88,7 @@ async fn get_current_weather_data_by_ip_address(
     providers_configuration: web::Data<Vec<ProviderSettings>>,
     cache_service_settings: web::Data<CacheServiceSettings>,
     current_weather_service: web::Data<CurrentWeatherService>,
-    conn: actix_web::dev::ConnectionInfo,
+    conn: ConnectionInfo,
     req: HttpRequest
 ) -> Result<impl Responder, GenericServiceError> {
     let ip_str = conn.realip_remote_addr().unwrap_or("");
@@ -103,20 +103,21 @@ async fn get_current_weather_data_by_ip_address(
         },
     };
 
-    let ip = if is_local_ip(ip) {
-        let user_ip = req.headers()
+    let ip: IpAddr = if is_local_ip(ip) {
+        let ip = req
+            .headers()
             .get("x-forwarded-for")
             .and_then(|h| h.to_str().ok())
-            .map(|s| s.split(',').next().unwrap_or(s));
+            .and_then(|s| s.split(',').next())
+            .and_then(|s| s.parse::<IpAddr>().ok())
+            .ok_or_else(|| GenericServiceError {
+                error: GenericServiceErrorDetails::new_aggregator_error(
+                    AggregatorError::LocalIpError,
+                ),
+            })?;
 
-        if let user_ip = Some(ip) {
-            println!("found ip {}", ip );
-            ip
-        } else {
-            return Err(GenericServiceError {
-                error: GenericServiceErrorDetails::new_aggregator_error(AggregatorError::LocalIpError)
-            });
-        }
+        println!("found ip {}", ip);
+        ip
     } else {
         ip
     };

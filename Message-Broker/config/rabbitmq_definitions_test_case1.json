@@ -1,0 +1,37 @@
+{
+    "users": [
+        {
+            "name": "ims",
+            "password": "dw_3d3DAsCSSss",
+            "hashing_algorithm": "rabbit_password_hashing_sha256",
+			"tags": ""
+        },
+        {
+            "name": "notis",
+            "password": "3dcCDP_erAc45",
+            "hashing_algorithm": "rabbit_password_hashing_sha256",
+			"tags": ""
+        }
+    ],
+    "vhosts": [
+        {
+            "name": "/digid"
+        }
+    ],
+    "permissions": [
+        {
+            "user": "ims",
+            "vhost": "/digid",
+            "configure": "",
+            "write": "^user_events$",
+            "read": ""
+        },
+        {
+            "user": "notis",
+            "vhost": "/digid",
+            "configure": "^(email_|user_events)*",
+            "write": "^email_",
+            "read": "(^email_|user_events)*"
+        }
+    ]
+}

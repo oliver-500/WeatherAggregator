@@ -9,14 +9,14 @@ use reqwest_middleware::{ClientBuilder};
 use reqwest_tracing::TracingMiddleware;
 use crate::org::unibl::etf::configuration::Settings;
 use crate::org::unibl::etf::controllers::current_weather_controller;
-use crate::org::unibl::etf::model::errors::query_error_handler;
+use crate::org::unibl::etf::handlers::query_error_handler::handle_validation_error;
 use crate::org::unibl::etf::services::current_weather_service::CurrentWeatherService;
 use crate::org::unibl::etf::model::responses::health_check_response::HealthCheckResponse;
 
 async fn health_check() -> impl Responder {
     let res = HealthCheckResponse {
         status: "UP".to_string(),
-        service_name: "External API Adapter Service".to_string(),
+        service_name: "Aggregator Service".to_string(),
         timestamp: Utc::now()
     };
     HttpResponse::Ok().json(res)
@@ -30,27 +30,28 @@ use reqwest_middleware::{Middleware, Next, Result};
 use rustls::ServerConfig;
 use tracing_actix_web::TracingLogger;
 use crate::org::unibl::etf::configuration::settings::HttpClientTlsIdentityBundle;
+use crate::org::unibl::etf::middlewares::json_500_middleware::Json500Middleware;
 
-struct LogHeaders;
-
-#[async_trait]
-impl Middleware for LogHeaders {
-    async fn handle(
-        &self,
-        req: Request,
-        extensions: &mut Extensions,
-        next: Next<'_>,
-    ) -> Result<reqwest::Response> {
-        println!("Outgoing request:");
-        println!("  {} {}", req.method(), req.url());
-
-        for (k, v) in req.headers() {
-            println!("  {}: {:?}", k, v);
-        }
-
-        next.run(req, extensions).await
-    }
-}
+// struct LogHeaders;
+//
+// #[async_trait]
+// impl Middleware for LogHeaders {
+//     async fn handle(
+//         &self,
+//         req: Request,
+//         extensions: &mut Extensions,
+//         next: Next<'_>,
+//     ) -> Result<reqwest::Response> {
+//         println!("Outgoing request:");
+//         println!("  {} {}", req.method(), req.url());
+//
+//         for (k, v) in req.headers() {
+//             println!("  {}: {:?}", k, v);
+//         }
+//
+//         next.run(req, extensions).await
+//     }
+// }
 
 pub fn run(
     tcp_listener: TcpListener,
@@ -80,8 +81,9 @@ pub fn run(
             .app_data(current_weather_service.clone())
             .app_data(providers_settings.clone())
             .app_data(cache_service_settings.clone())
-            .app_data(QueryConfig::default().error_handler(query_error_handler::handle_validation_error))
+            .app_data(QueryConfig::default().error_handler(handle_validation_error))
             .wrap(TracingLogger::default())
+            .wrap(Json500Middleware)
             .service(
                 web::scope("/api/v1")
                     .configure(current_weather_controller::routes)
