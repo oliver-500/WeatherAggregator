@@ -7,12 +7,15 @@ use actix_web::dev::Server;
 use actix_web_validator::QueryConfig;
 use chrono::Utc;
 use rustls::ServerConfig;
+use sqlx::PgPool;
 use tracing_actix_web::TracingLogger;
 use crate::org::unibl::etf::configuration::Settings;
 use crate::org::unibl::etf::controllers::auth_controller;
+use crate::org::unibl::etf::external_dependency_systems::message_broker::channel_pool::ChannelPool;
 use crate::org::unibl::etf::handlers::query_error_handler;
 use crate::org::unibl::etf::middlewares::json_500_middleware::Json500Middleware;
 use crate::org::unibl::etf::model::responses::health_check_response::HealthCheckResponse;
+use crate::org::unibl::etf::publishers::user_publisher::UserPublisher;
 use crate::org::unibl::etf::repositories::user_identity_repository::UserIdentityRepository;
 use crate::org::unibl::etf::services::auth_service::AuthService;
 use crate::org::unibl::etf::services::jwt_service::JwtService;
@@ -35,15 +38,21 @@ pub fn run(
     jwt_private_key: Vec<u8>,
     jwt_public_key: Vec<u8>,
     _is_broker_up: Arc<AtomicBool>,
-    _is_db_up: Arc<AtomicBool>
+    _is_db_up: Arc<AtomicBool>,
+    db_pool: PgPool,
+    broker_pool: Arc<ChannelPool>
 ) -> std::io::Result<Server> {
     let jwt_service = JwtService::new_with_private_key(jwt_private_key, jwt_public_key);
-    let user_identity_repository = UserIdentityRepository::default();
+    let user_identity_repository = UserIdentityRepository::new_with_db_pool(db_pool);
+    let user_publisher = UserPublisher {
+        broker_pool
+    };
 
     let auth_service = web::Data::new(
         AuthService {
             jwt_service,
-            user_identity_repository
+            user_identity_repository,
+            user_publisher,
         }
     );
 

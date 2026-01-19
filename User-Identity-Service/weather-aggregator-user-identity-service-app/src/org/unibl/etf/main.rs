@@ -107,7 +107,9 @@ async fn main() -> std::io::Result<()> {
         jwt_private_key,
         jwt_public_key,
         is_broker_up,
-        is_db_up
+        is_db_up,
+        db_connection_pool,
+        broker_channel_pool
     )?.await;
 
     res

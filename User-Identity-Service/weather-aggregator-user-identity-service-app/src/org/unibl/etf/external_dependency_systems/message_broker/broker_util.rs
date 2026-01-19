@@ -115,7 +115,7 @@ pub async fn configure_channel(
     match channel
         .exchange_declare(
             "user_events",
-            lapin::ExchangeKind::Direct,
+            lapin::ExchangeKind::Topic,
             ExchangeDeclareOptions::default(),
             FieldTable::default(),
         )

@@ -1,0 +1,6 @@
+/config
+/data
+/secrets
+/certs
+Dockerfile
+docker-init.sh

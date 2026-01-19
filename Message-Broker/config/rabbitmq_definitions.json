@@ -41,16 +41,16 @@
         {
             "user": "weather-aggregator-user-preferences-service-app",
             "vhost": "/weather-aggregator",
-            "configure": "^user_events$",
-			"write": "^user_events$",
-            "read": "^user_events$"
+            "configure":"^(user_preferences_service_queue|user_events)$",
+			"write": "^(user_preferences_service_queue|user_events)$",
+            "read": "^(user_preferences_service_queue|user_events)$"
         },
 		{
             "user": "weather-aggregator-user-profile-service-app",
             "vhost": "/weather-aggregator",
-            "configure": "^user_events$",
+            "configure": "^profile_queue$",
 			"write": "^user_events$",
-            "read": "^user_events$"
+            "read": "^profile_queue$"
         }
     ]
 }

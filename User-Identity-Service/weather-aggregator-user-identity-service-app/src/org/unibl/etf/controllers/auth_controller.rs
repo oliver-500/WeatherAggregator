@@ -24,24 +24,36 @@ async fn register_standard_user(
     request: HttpRequest,
     auth_service: web::Data<AuthService>,
 ) -> Result<impl Responder, GenericServiceError> {
-    // let jwt: Option<String> = if request_body.use_previously_saved_data == true {
-    //     match retrieve_jwt_from_cookie(&request) {
-    //         Err(e) => {
-    //             tracing::error!("Use previously saved data requested but cookie not found with error: {:?}", e);
-    //             None
-    //         },
-    //         Ok(jwt) => Some(jwt)
-    //     }
-    // };
-
-    // match auth_service.register_standard_user(request_body.into_inner(), jwt) {
-    //
-    // }
-
-    let err: GenericServiceError = GenericServiceError {
-        error: GenericServiceErrorDetails::new_user_identity_service_error(UserIdentityServiceError::ServerError(None))
+    let jwt: Option<String> = if request_body.use_previously_saved_data == true {
+        match retrieve_jwt_from_cookie(&request) {
+            Err(e) => {
+                tracing::error!("Use previously saved data requested but cookie not found with error: {:?}", e);
+                None
+            },
+            Ok(jwt) => Some(jwt)
+        }
+    } else {
+        None
     };
-    return Err::<HttpResponse, GenericServiceError>(err);
+
+    match auth_service.register_standard_user(&request_body.into_inner(), jwt).await {
+        Ok(_res) => {
+            return Ok(HttpResponse::Ok().finish());
+        },
+        Err(e) => {
+            let err = GenericServiceError {
+                error: GenericServiceErrorDetails::new_user_identity_service_error(e)
+            };
+            return Err(err);
+        }
+
+
+    }
+
+    // let err: GenericServiceError = GenericServiceError {
+    //     error: GenericServiceErrorDetails::new_user_identity_service_error(UserIdentityServiceError::ServerError(None))
+    // };
+    // return Err::<HttpResponse, GenericServiceError>(err);
 
 }
 
