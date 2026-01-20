@@ -1,1 +1,2 @@
 pub mod register_standard_user_request;
+pub mod login_standard_user_request;

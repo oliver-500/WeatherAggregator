@@ -112,8 +112,6 @@ pub async fn configure_channel(
         }
     };
 
-    println!("jao0");
-
     let res : Result<(), lapin::Error> = match channel
         .exchange_declare(
             "user_events",
@@ -148,18 +146,14 @@ pub async fn configure_channel(
 
 
     if let Err(error) = res {
-
         return Err(BrokerError::ChannelConfigurationError(error.to_string()));
-
     };
-
-    println!("proslo");
 
     let res = channel
         .queue_bind(
             "user_preferences_service_queue",
             "user_events",
-            "user.registered",
+            "user.registered.#",
             QueueBindOptions::default(),
             FieldTable::default(),
         )

@@ -7,15 +7,23 @@ use crate::org::unibl::etf::external_dependency_systems::message_broker::broker_
 use crate::org::unibl::etf::external_dependency_systems::message_broker::channel_pool::ChannelPool;
 use crate::org::unibl::etf::external_dependency_systems::message_broker::consumers::message_consumer::MessageConsumer;
 use crate::org::unibl::etf::model::domain::messages::anonymous_user_registered::AnonymousUserRegistered;
+use crate::org::unibl::etf::repositories::user_preferences_repository::UserPreferencesRepository;
 
 pub struct UserIdentityConsumer {
     channel_pool: Arc<ChannelPool>,
+    user_preferences_repository: UserPreferencesRepository
 }
 
 impl UserIdentityConsumer {
 
-    pub fn new_with_channel_pool(channel_pool: Arc<ChannelPool>) -> Self {
-        Self { channel_pool }
+    pub fn new_with_channel_pool_and_user_preferences_repository(
+        channel_pool: Arc<ChannelPool>,
+        user_preferences_repository: UserPreferencesRepository
+    ) -> Self {
+        Self {
+            channel_pool,
+            user_preferences_repository
+        }
     }
 }
 
@@ -42,16 +50,25 @@ impl MessageConsumer for UserIdentityConsumer {
             .await
             .unwrap();
 
+        println!("cekam");
         while let Some(delivery_result) = consumer.next().await {
             match delivery_result {
+
                 Ok(delivery) => {
                     // Determine which struct to use based on the routing key
+                    println!("op2");
                     match delivery.routing_key.as_str() {
                         "user.registered.anonymous" => {
-                            if let Ok(event) = serde_json::from_slice::<AnonymousUserRegistered>(&delivery.data) {
-                                println!("Processing Anonymous: {:?}", event);
-                                // TODO: Add DB logic here
+                            match serde_json::from_slice::<AnonymousUserRegistered>(&delivery.data) {
+                                Ok(event) => {
+                                    println!("Processing Anonymous: {:?}", event);
+                                    // TODO: Add DB logic here
+                                }
+                                Err(e) => {
+                                    tracing::warn!("Failed to parse event. Exact error: {:?}", e.to_string());
+                                }
                             }
+
                         },
                         "user.registered.standard" => {
                             // You'll need a StandardUserRegistered struct too

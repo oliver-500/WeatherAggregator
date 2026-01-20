@@ -49,6 +49,7 @@ async-trait = "0.1.89"
 version = "0.8.6"
 default-features = false
 features = [
+    "bigdecimal",
     "runtime-tokio-rustls",
     "macros",
     "postgres",

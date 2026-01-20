@@ -11,6 +11,7 @@ use weather_aggregator_user_preferences_service_app::org::unibl::etf::external_d
 use weather_aggregator_user_preferences_service_app::org::unibl::etf::external_dependency_systems::message_broker::channel_pool::ChannelPool;
 use weather_aggregator_user_preferences_service_app::org::unibl::etf::external_dependency_systems::message_broker::consumers::message_consumer::MessageConsumer;
 use weather_aggregator_user_preferences_service_app::org::unibl::etf::external_dependency_systems::message_broker::consumers::user_identity_consumer::UserIdentityConsumer;
+use weather_aggregator_user_preferences_service_app::org::unibl::etf::repositories::user_preferences_repository::UserPreferencesRepository;
 use weather_aggregator_user_preferences_service_app::org::unibl::etf::startup::run;
 use weather_aggregator_user_preferences_service_app::org::unibl::etf::telemetry::{get_subscriber, init_subscriber};
 
@@ -82,8 +83,15 @@ async fn main() -> std::io::Result<()> {
         }
     );
 
+    let user_preferences_repository = UserPreferencesRepository {
+        db_pool: db_connection_pool.clone()
+    };
+
     let consumers: Arc<Vec<Arc<dyn MessageConsumer>>> = Arc::new(vec![
-       Arc::new(UserIdentityConsumer::new_with_channel_pool(broker_channel_pool.clone()))
+       Arc::new(UserIdentityConsumer::new_with_channel_pool_and_user_preferences_repository(
+           broker_channel_pool.clone(),
+           user_preferences_repository
+       ))
     ]);
 
     let broker_channel_pool_pointer = broker_channel_pool.clone();

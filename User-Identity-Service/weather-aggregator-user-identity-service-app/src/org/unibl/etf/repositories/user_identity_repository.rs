@@ -1,6 +1,9 @@
+use secrecy::SecretString;
 use sqlx::PgPool;
-
+use crate::org::unibl::etf::model::domain::entities::user_entity::user_email::UserEmail;
+use crate::org::unibl::etf::model::domain::entities::user_entity::user_password::UserPassword;
 use crate::org::unibl::etf::model::domain::entities::user_entity::UserEntity;
+use crate::org::unibl::etf::model::user_type::UserType;
 
 #[derive(Debug)]
 pub struct UserIdentityRepository{
@@ -38,8 +41,28 @@ impl UserIdentityRepository {
     }
 
 
+    #[tracing::instrument(name = "Saving new standard user in the database method", skip())]
+    pub async fn get_user_by_email(&self, email: &str) -> Result<UserEntity, sqlx::Error> {
+        let row = sqlx::query!(
+        r#"
+        SELECT id, email, password_hash
+        FROM wa_user
+        WHERE email = $1
+        "#,
+        email
+    )
+            .fetch_one(&self.db_pool)
+            .await?;
 
-
+        // 2. Map raw strings to your Domain Types
+        // Assuming UserEmail and Password have a .new() or parse method
+        Ok(UserEntity {
+            id: row.id,
+            email: UserEmail(row.email), // Or however you initialize your Value Object
+            password: UserPassword(SecretString::from(row.password_hash)),
+            user_type: UserType::STANDARD // Mapping 'password_hash' column to 'password' field
+        })
+    }
 }
 
 // impl Default for UserIdentityRepository {
