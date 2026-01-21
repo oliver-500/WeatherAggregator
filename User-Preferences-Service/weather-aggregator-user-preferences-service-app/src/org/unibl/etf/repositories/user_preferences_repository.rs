@@ -26,9 +26,9 @@ impl UserPreferencesRepository {
         r#"
         INSERT INTO user_preferences
             (user_id, user_type, unit_system, favorite_location_name, favorite_lat, favorite_lon)
-        VALUES ($1, $2, $3, $4, $5::FLOAT8, $6::FLOAT8)
+        VALUES ($1, COALESCE($2, 'GUEST'::user_account_type), $3, $4, $5::FLOAT8, $6::FLOAT8)
         ON CONFLICT (user_id) DO UPDATE SET
-            user_type = EXCLUDED.user_type,
+            user_type = CASE WHEN $2 IS NULL THEN user_preferences.user_type ELSE EXCLUDED.user_type END,
             unit_system = EXCLUDED.unit_system,
             favorite_location_name = EXCLUDED.favorite_location_name,
             favorite_lat = EXCLUDED.favorite_lat,
@@ -103,27 +103,27 @@ impl UserPreferencesRepository {
     #[tracing::instrument(name = "Adding history item and trimming to N", skip(self))]
     pub async fn add_history_item(
         &self,
-        user_id: Uuid,
-        location_name: &str,
-        lat: f64,
-        lon: f64,
+        item: LocationHistoryEntity,
         limit: i64, // Pass N here (e.g., 10)
-    ) -> Result<(), sqlx::Error> {
+    ) -> Result<Uuid, sqlx::Error> {
         let mut tx = self.db_pool.begin().await?;
 
         // 1. Insert the new location
-        sqlx::query!(
+        let row = sqlx::query!(
         r#"
         INSERT INTO location_history (user_id, location_name, lat, lon)
         VALUES ($1, $2, $3::FLOAT8, $4::FLOAT8)
+        RETURNING id
         "#,
-        user_id,
-        location_name,
-        lat,
-        lon
+        item.user_id,
+        item.location_name,
+        item.lat,
+        item.lon
     )
-            .execute(&mut *tx)
+            .fetch_one(&mut *tx)
             .await?;
+
+        let new_id = row.id;
 
         // 2. Delete oldest items exceeding the limit N
         // This subquery finds the IDs of the newest N items and deletes everything else
@@ -137,14 +137,14 @@ impl UserPreferencesRepository {
             OFFSET $2
         )
         "#,
-        user_id,
+        item.user_id,
         limit
     )
             .execute(&mut *tx)
             .await?;
 
         tx.commit().await?;
-        Ok(())
+        Ok(new_id)
     }
 
     #[tracing::instrument(name = "Migrating guest data to registered user", skip(self))]
@@ -156,7 +156,8 @@ impl UserPreferencesRepository {
         let mut tx = self.db_pool.begin().await?;
 
         // 1. Update the main preferences record
-        sqlx::query!(
+        //ako ne postoji guest id, ne mora fail da se desi
+        let result = sqlx::query!(
         r#"
         UPDATE user_preferences
         SET user_id = $1, user_type = $2, updated_at = NOW()
@@ -167,7 +168,20 @@ impl UserPreferencesRepository {
         guest_id
     )
             .execute(&mut *tx)
-            .await?;
+            .await;
+
+        match result {
+            Ok(res) => {
+                let rows_affected = res.rows_affected();
+                if rows_affected == 0 {
+                    tracing::warn!("No guest record found to update. Continuing anyway.");
+                }
+            }
+            Err(e) => {
+                // Log the error but don't use '?' so the function continues
+                return Err(e);
+            }
+        }
 
         // 2. Update the history records
         sqlx::query!(

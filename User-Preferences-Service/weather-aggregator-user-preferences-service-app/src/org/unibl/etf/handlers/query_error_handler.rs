@@ -2,11 +2,11 @@ use actix_web::{HttpRequest, HttpResponse};
 use actix_web_validator::Error;
 use chrono::Utc;
 use crate::org::unibl::etf::controllers::errors::{GenericServiceError, GenericServiceErrorDetails};
-use crate::org::unibl::etf::model::errors::user_identity_service_error::UserIdentityServiceError;
+use crate::org::unibl::etf::model::errors::user_identity_service_error::UserPreferencesServiceError;
 
 pub fn handle_validation_error(err: Error, _req: &HttpRequest) -> actix_web::Error {
 
-    let aggregator_error = UserIdentityServiceError::RequestValidationError(Some(err.to_string()));
+    let aggregator_error = UserPreferencesServiceError::RequestValidationError(Some(err.to_string()));
     let resp = GenericServiceError {
         error: GenericServiceErrorDetails {
             code: aggregator_error.clone(),

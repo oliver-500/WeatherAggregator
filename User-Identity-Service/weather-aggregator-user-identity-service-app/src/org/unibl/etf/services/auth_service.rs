@@ -172,10 +172,12 @@ impl AuthService {
             match user_publisher_clone
                 .publish_anonymous_user_registered_event(user)
                 .await {
-                    Ok(_) => {},
+                    Ok(_) => {
+
+                    },
                     Err(e) => {
-                    tracing::error!("Failed to publish message: Error: {:?}", e);
-                }
+                        tracing::error!("Failed to publish message: Error: {:?}", e);
+                    }
             }
         }.instrument(Span::current())
         );

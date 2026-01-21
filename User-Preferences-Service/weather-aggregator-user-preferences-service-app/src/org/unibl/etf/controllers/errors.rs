@@ -4,7 +4,7 @@ use actix_web::http::StatusCode;
 use chrono::{DateTime, Utc};
 use serde::{Serialize};
 
-use crate::org::unibl::etf::model::errors::user_identity_service_error::UserIdentityServiceError;
+use crate::org::unibl::etf::model::errors::user_identity_service_error::UserPreferencesServiceError;
 
 #[derive(Serialize, Debug, Clone)]
 pub struct GenericServiceError {
@@ -13,14 +13,14 @@ pub struct GenericServiceError {
 
 #[derive(Serialize, Debug, Clone)]
 pub struct GenericServiceErrorDetails {
-    pub code: UserIdentityServiceError,
+    pub code: UserPreferencesServiceError,
     pub code_numeric: u16,
     pub message: String,
     pub timestamp: DateTime<Utc>,
 }
 
 impl GenericServiceErrorDetails {
-    pub fn new_user_identity_service_error(e: UserIdentityServiceError) -> Self {
+    pub fn new_user_preferences_service_error(e: UserPreferencesServiceError) -> Self {
         Self {
             code: e.clone(),
             code_numeric: e.as_numeric(),
@@ -40,7 +40,7 @@ impl fmt::Display for GenericServiceError {
 impl error::ResponseError for GenericServiceError {
     fn status_code(&self) -> StatusCode {
         let status_code : StatusCode = match self.error.code {
-            UserIdentityServiceError::RequestValidationError(_) => {
+            UserPreferencesServiceError::RequestValidationError(_) => {
                 StatusCode::BAD_REQUEST
             },
             _ => {

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Debug, Clone, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum UserIdentityServiceError {
+pub enum UserPreferencesServiceError {
     RequestValidationError(Option<String>),
     ServerError(Option<String>),
     ConnectionError(Option<String>),
@@ -14,7 +14,7 @@ pub enum UserIdentityServiceError {
 
 }
 
-impl UserIdentityServiceError {
+impl UserPreferencesServiceError {
     pub fn get_sanitized_error(&self) -> Self {
         match self {
             Self::RequestValidationError(s) => Self::RequestValidationError(s.clone()),
@@ -37,16 +37,16 @@ impl UserIdentityServiceError {
 
     pub fn get_message(&self) -> String {
         match self {
-            UserIdentityServiceError::RequestValidationError(msg) => {
+            UserPreferencesServiceError::RequestValidationError(msg) => {
                 msg.clone().unwrap_or(String::from("RequestValidationError"))
             },
-            UserIdentityServiceError::JwtCookieNotFoundError(msg) => {
+            UserPreferencesServiceError::JwtCookieNotFoundError(msg) => {
                 msg.clone().unwrap_or(String::from("JwtCookieNotFoundError"))
             },
-            UserIdentityServiceError::TamperedJwtTokenError(msg) => {
+            UserPreferencesServiceError::TamperedJwtTokenError(msg) => {
                 msg.clone().unwrap_or(String::from("TamperedJwtTokenError"))
             },
-            UserIdentityServiceError::UserError(msg) => {
+            UserPreferencesServiceError::UserError(msg) => {
                 msg.clone().unwrap_or(String::from("UserError"))
             }
             _ => { String::default() }
@@ -55,16 +55,16 @@ impl UserIdentityServiceError {
 
     pub fn as_numeric(&self) -> u16 {
         match self {
-            UserIdentityServiceError::RequestValidationError(_) => 400,
-            UserIdentityServiceError::JwtCookieNotFoundError(_) => 404,
-            UserIdentityServiceError::TamperedJwtTokenError(_) => 400,
-            UserIdentityServiceError::UserError(_) => 400,
-            UserIdentityServiceError::ServerError(_) => 500,
+            UserPreferencesServiceError::RequestValidationError(_) => 400,
+            UserPreferencesServiceError::JwtCookieNotFoundError(_) => 404,
+            UserPreferencesServiceError::TamperedJwtTokenError(_) => 400,
+            UserPreferencesServiceError::UserError(_) => 400,
+            UserPreferencesServiceError::ServerError(_) => 500,
 
-            UserIdentityServiceError::ConnectionError(_) => {
+            UserPreferencesServiceError::ConnectionError(_) => {
                 500
             }
-            UserIdentityServiceError::ResponseParsingError(_) => {
+            UserPreferencesServiceError::ResponseParsingError(_) => {
                 500
             },
             _ => {

@@ -6,7 +6,11 @@ use lapin::types::FieldTable;
 use crate::org::unibl::etf::external_dependency_systems::message_broker::broker_error::BrokerError;
 use crate::org::unibl::etf::external_dependency_systems::message_broker::channel_pool::ChannelPool;
 use crate::org::unibl::etf::external_dependency_systems::message_broker::consumers::message_consumer::MessageConsumer;
+use crate::org::unibl::etf::model::domain::entities::user_preferences_entity::unit_system_type::UnitSystemType;
+use crate::org::unibl::etf::model::domain::entities::user_preferences_entity::UserPreferencesEntity;
 use crate::org::unibl::etf::model::domain::messages::anonymous_user_registered::AnonymousUserRegistered;
+use crate::org::unibl::etf::model::domain::messages::standard_user_registered::StandardUserRegistered;
+
 use crate::org::unibl::etf::repositories::user_preferences_repository::UserPreferencesRepository;
 
 pub struct UserIdentityConsumer {
@@ -63,6 +67,27 @@ impl MessageConsumer for UserIdentityConsumer {
                                 Ok(event) => {
                                     println!("Processing Anonymous: {:?}", event);
                                     // TODO: Add DB logic here
+
+                                    let user_preferences_entity = UserPreferencesEntity {
+                                        user_id: event.id,
+                                        user_type: Some(event.user_type),
+                                        unit_system: UnitSystemType::METRIC,
+                                        favorite_location_name: None,
+                                        favorite_lat: None,
+                                        favorite_lon: None,
+                                        updated_at: Default::default(),
+                                    };
+
+                                    match self.user_preferences_repository.save(&user_preferences_entity)
+                                        .await {
+                                        Ok(_) => {
+                                            tracing::info!("Successfully saved user preferences for anonymous user.");
+                                        },
+                                        Err(e) => {
+                                            tracing::error!("Error saving user preferences entity: {:?}", e.to_string());
+                                        }
+                                    }
+
                                 }
                                 Err(e) => {
                                     tracing::warn!("Failed to parse event. Exact error: {:?}", e.to_string());
@@ -71,8 +96,55 @@ impl MessageConsumer for UserIdentityConsumer {
 
                         },
                         "user.registered.standard" => {
-                            // You'll need a StandardUserRegistered struct too
-                            println!("Processing Standard User upgrade");
+                            match serde_json::from_slice::<StandardUserRegistered>(&delivery.data) {
+                                Ok(event) => {
+                                    println!("Processing Standard User upgrade");
+                                    // TODO: Add DB logic here
+
+                                    match event.old_id {
+                                        Some(old_id) => {
+                                            match self.user_preferences_repository
+                                                .migrate_guest_to_user(old_id, event.new_id)
+                                                .await {
+                                                Ok(_) => {
+                                                    tracing::info!("Successfully migrated user from anonymous to standard.");
+                                                },
+                                                Err(e) => {
+                                                    tracing::error!("Failed to migrate user from anonymous to standard: {}", e.to_string());
+                                                }
+                                            }
+                                        },
+                                        None => {
+                                            let user_preferences_entity = UserPreferencesEntity {
+                                                user_id: event.new_id,
+                                                user_type: Some(event.user_type),
+                                                unit_system: UnitSystemType::METRIC,
+                                                favorite_location_name: None,
+                                                favorite_lat: None,
+                                                favorite_lon: None,
+                                                updated_at: Default::default(),
+                                            };
+
+                                            match self.user_preferences_repository.save(&user_preferences_entity)
+                                                .await {
+                                                Ok(_) => {
+                                                    tracing::info!("Successfully saved user preferences for anonymous user.");
+                                                },
+                                                Err(e) => {
+                                                    tracing::error!("Error saving user preferences entity: {:?}", e.to_string());
+                                                }
+                                            }
+                                        }
+                                    }
+
+
+
+                                }
+                                Err(e) => {
+                                    tracing::warn!("Failed to parse event. Exact error: {:?}", e.to_string());
+                                }
+                            }
+
                         },
                         _ => tracing::warn!("Received unknown routing key: {}", delivery.routing_key),
                     }

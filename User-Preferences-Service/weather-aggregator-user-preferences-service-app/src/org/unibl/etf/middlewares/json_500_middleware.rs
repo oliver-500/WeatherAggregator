@@ -9,7 +9,7 @@ use futures_util::future::{ok, LocalBoxFuture, Ready};
 use chrono::{ Utc};
 use std::rc::Rc;
 use crate::org::unibl::etf::controllers::errors::{GenericServiceError, GenericServiceErrorDetails};
-use crate::org::unibl::etf::model::errors::user_identity_service_error::{UserIdentityServiceError};
+use crate::org::unibl::etf::model::errors::user_identity_service_error::{UserPreferencesServiceError};
 
 pub struct Json500Middleware;
 
@@ -75,7 +75,7 @@ where
 
             let generic_error = GenericServiceError {
                 error: GenericServiceErrorDetails {
-                    code: UserIdentityServiceError::ServerError(None),
+                    code: UserPreferencesServiceError::ServerError(None),
                     code_numeric: 500,
                     message: "Internal server error".to_string(),
                     timestamp: Utc::now(),
