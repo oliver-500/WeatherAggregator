@@ -3,7 +3,7 @@ use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use crate::org::unibl::etf::jwt::claims::Claims;
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct JwtService {
 
     pub signer_public_key: Vec<u8>,

@@ -11,6 +11,7 @@ pub enum UserPreferencesServiceError {
     TamperedJwtTokenError(Option<String>),
     DatabaseError(Option<String>),
     UserError(Option<String>),
+    Unauthorized(Option<String>),
 
 }
 
@@ -20,6 +21,7 @@ impl UserPreferencesServiceError {
             Self::RequestValidationError(s) => Self::RequestValidationError(s.clone()),
             Self::JwtCookieNotFoundError(s) => Self::JwtCookieNotFoundError(s.clone()),
             Self::TamperedJwtTokenError(s) => Self::TamperedJwtTokenError(s.clone()),
+            Self::Unauthorized(s) => Self::Unauthorized(s.clone()),
             Self::UserError(s) => Self::UserError(s.clone()),
             _ => Self::ServerError(None),
         }
@@ -30,6 +32,7 @@ impl UserPreferencesServiceError {
             Self::JwtCookieNotFoundError(s) => s.clone().unwrap_or(String::default()),
             Self::TamperedJwtTokenError(s) => s.clone().unwrap_or(String::default()),
             Self::UserError(s) => s.clone().unwrap_or(String::default()),
+            Self::Unauthorized(s) => s.clone().unwrap_or(String::default()),
             _ => String::default(),
         }
 
@@ -48,6 +51,9 @@ impl UserPreferencesServiceError {
             },
             UserPreferencesServiceError::UserError(msg) => {
                 msg.clone().unwrap_or(String::from("UserError"))
+            },
+            UserPreferencesServiceError::Unauthorized(msg) => {
+                msg.clone().unwrap_or(String::from("Unauthorized"))
             }
             _ => { String::default() }
         }
@@ -59,6 +65,7 @@ impl UserPreferencesServiceError {
             UserPreferencesServiceError::JwtCookieNotFoundError(_) => 404,
             UserPreferencesServiceError::TamperedJwtTokenError(_) => 400,
             UserPreferencesServiceError::UserError(_) => 400,
+            UserPreferencesServiceError::Unauthorized(_) => 401,
             UserPreferencesServiceError::ServerError(_) => 500,
 
             UserPreferencesServiceError::ConnectionError(_) => {

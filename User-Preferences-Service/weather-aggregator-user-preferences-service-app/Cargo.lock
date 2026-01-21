@@ -4408,6 +4408,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "config",
+ "futures",
  "futures-util",
  "jsonwebtoken",
  "lapin",

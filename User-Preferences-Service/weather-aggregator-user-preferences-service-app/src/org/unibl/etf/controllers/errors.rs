@@ -43,6 +43,18 @@ impl error::ResponseError for GenericServiceError {
             UserPreferencesServiceError::RequestValidationError(_) => {
                 StatusCode::BAD_REQUEST
             },
+            UserPreferencesServiceError::JwtCookieNotFoundError(_) => {
+                StatusCode::UNAUTHORIZED
+            },
+            UserPreferencesServiceError::UserError(_) => {
+                StatusCode::BAD_REQUEST
+            },
+            UserPreferencesServiceError::TamperedJwtTokenError(_) => {
+                StatusCode::UNAUTHORIZED
+            },
+            UserPreferencesServiceError::Unauthorized(_) => {
+                StatusCode::UNAUTHORIZED
+            }
             _ => {
                 StatusCode::INTERNAL_SERVER_ERROR
             },

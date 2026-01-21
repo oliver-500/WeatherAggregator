@@ -14,6 +14,7 @@ use crate::org::unibl::etf::controllers::user_preferences_controller;
 use crate::org::unibl::etf::external_dependency_systems::message_broker::channel_pool::ChannelPool;
 use crate::org::unibl::etf::handlers::query_error_handler;
 use crate::org::unibl::etf::middlewares::json_500_middleware::Json500Middleware;
+use crate::org::unibl::etf::middlewares::jwt_middleware::JwtMiddleware;
 use crate::org::unibl::etf::model::responses::health_check_response::HealthCheckResponse;
 use crate::org::unibl::etf::publishers::user_publisher::UserPublisher;
 use crate::org::unibl::etf::repositories::user_preferences_repository::UserPreferencesRepository;
@@ -41,7 +42,7 @@ pub fn run(
     db_pool: PgPool,
     broker_pool: Arc<ChannelPool>
 ) -> std::io::Result<Server> {
-    let _jwt_service = JwtService::new_with_signer_private_key(signer_jwt_public_key);
+    let jwt_service = Arc::new(JwtService::new_with_signer_private_key(signer_jwt_public_key));
 
     let _user_publisher = UserPublisher {
         broker_pool
@@ -55,14 +56,18 @@ pub fn run(
         }
     );
 
-
-
     let mut server = HttpServer::new(move || {
         App::new()
-            .app_data(QueryConfig::default().error_handler(query_error_handler::handle_validation_error))
             .app_data(
-                actix_web_validator::JsonConfig::default().error_handler(query_error_handler::handle_validation_error))
+                QueryConfig::default().error_handler(query_error_handler::handle_validation_error)
+            )
+            .app_data(
+                actix_web_validator::JsonConfig::default().error_handler(query_error_handler::handle_validation_error)
+            )
             .wrap(TracingLogger::default())
+            .wrap(JwtMiddleware {
+                jwt_service: Arc::clone(&jwt_service)
+            })
             .wrap(Json500Middleware)
             .app_data(user_preferences_service.clone())
             .service(
