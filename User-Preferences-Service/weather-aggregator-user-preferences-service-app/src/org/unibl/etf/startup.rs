@@ -6,6 +6,7 @@ use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use actix_web::dev::Server;
 use actix_web_validator::QueryConfig;
 use chrono::Utc;
+use jsonwebtoken::DecodingKey;
 use rustls::ServerConfig;
 use sqlx::PgPool;
 use tracing_actix_web::TracingLogger;
@@ -34,15 +35,18 @@ async fn health_check() -> impl Responder {
 
 pub fn run(
     tcp_listener: TcpListener,
-    _configuration: Settings,
+    configuration: Settings,
     server_config: Option<ServerConfig>,
-    signer_jwt_public_key: Vec<u8>,
+    signer_jwt_public_key: DecodingKey,
     _is_broker_up: Arc<AtomicBool>,
     _is_db_up: Arc<AtomicBool>,
     db_pool: PgPool,
     broker_pool: Arc<ChannelPool>
 ) -> std::io::Result<Server> {
-    let jwt_service = Arc::new(JwtService::new_with_signer_private_key(signer_jwt_public_key));
+    let jwt_service = Arc::new(JwtService::new_with_signer_private_key_and_signer_name(
+        signer_jwt_public_key,
+        configuration.jwt.issuer
+    ));
 
     let _user_publisher = UserPublisher {
         broker_pool

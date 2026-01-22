@@ -24,11 +24,6 @@ async fn main() -> std::io::Result<()> {
     CryptoProvider::install_default(rustls::crypto::ring::default_provider())
         .expect("Failed to install CryptoProvider.");
 
-    let signer_jwt_public_key = configuration
-        .jwt
-        .get_signer_jwt_public_key()
-        .expect("Unable to read required public key for jwt.");
-
     let http_server_config = configuration
         .application
         .get_http_server_tls_config()
@@ -47,6 +42,13 @@ async fn main() -> std::io::Result<()> {
     let subscriber = get_subscriber("User preferences Service".into(), "info".into(), std::io::stdout, configuration.tracing_agent.clone());
     init_subscriber(subscriber);
 
+    let http_client = reqwest::Client::new();
+    let decoding_key = configuration
+        .jwt
+        .get_signer_jwt_public_key(http_client)
+        .await
+        .expect("Failed to get authentication service jwt public key.");
+
     let address = format!(
         "{}:{}",
         configuration.application.host,
@@ -63,10 +65,8 @@ async fn main() -> std::io::Result<()> {
     };
     spawn_db_monitor(db_connection_pool.clone(), is_db_up.clone());
 
-
     let (tx, rx) = mpsc::channel::<BrokerTask>(50);
     let tx_pointer = tx.clone();
-
     tokio::spawn(async move {
         broker_task_handler(rx, tx_pointer).await;
     });
@@ -83,14 +83,12 @@ async fn main() -> std::io::Result<()> {
         }
     );
 
-    let user_preferences_repository = UserPreferencesRepository {
-        db_pool: db_connection_pool.clone()
-    };
-
     let consumers: Arc<Vec<Arc<dyn MessageConsumer>>> = Arc::new(vec![
        Arc::new(UserIdentityConsumer::new_with_channel_pool_and_user_preferences_repository(
            broker_channel_pool.clone(),
-           user_preferences_repository
+           UserPreferencesRepository {
+               db_pool: db_connection_pool.clone()
+           }
        ))
     ]);
 
@@ -114,17 +112,15 @@ async fn main() -> std::io::Result<()> {
         }
     });
 
-
-
-
     let listener = TcpListener::bind(address)
         .expect("Failed to bind to specified address.");
+
     //conditional bloker kad implementiram sve endpointe
     let res = run(
         listener,
         configuration,
         http_server_config,
-        signer_jwt_public_key,
+        decoding_key,
         is_broker_up,
         is_db_up,
         db_connection_pool,
@@ -132,5 +128,4 @@ async fn main() -> std::io::Result<()> {
     )?.await;
 
     res
-
 }

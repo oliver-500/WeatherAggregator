@@ -5,20 +5,24 @@ use crate::org::unibl::etf::jwt::claims::Claims;
 
 #[derive(Debug, Clone)]
 pub struct JwtService {
-
-    pub signer_public_key: Vec<u8>,
+    pub signer_public_key: DecodingKey,
+    pub signer_name: String,
 }
 
 
 impl JwtService {
-    fn new() -> Self {
+    // fn new() -> Self {
+    //     Self {
+    //         signer_public_key: Vec::new(),
+    //     }
+    // }
+    pub fn new_with_signer_private_key_and_signer_name(
+        signer_public_key: DecodingKey,
+        signer_name: String,
+    ) -> Self {
         Self {
-            signer_public_key: Vec::new(),
-        }
-    }
-    pub fn new_with_signer_private_key(signer_public_key: Vec<u8> ) -> Self {
-        Self {
-            signer_public_key
+            signer_public_key,
+            signer_name,
         }
     }
 
@@ -32,12 +36,12 @@ impl JwtService {
         let mut validation = Validation::new(Algorithm::EdDSA);
 
         // Optional: Add extra checks (e.g., must have a specific issuer)
-        validation.set_issuer(&["weather-aggregator-user-identity-service-app".to_owned()]);
+        validation.set_issuer(&[self.signer_name.clone()]);
 
         // 3. Decode and Validate
         let token_data = decode::<Claims>(
             token,
-            &DecodingKey::from_ed_pem(&self.signer_public_key)?,
+            &self.signer_public_key,
             &validation
         )?;
 
@@ -51,7 +55,7 @@ impl JwtService {
 
         let expired_data = decode::<Claims>(
             token,
-            &DecodingKey::from_ed_pem(&self.signer_public_key)?,
+            &self.signer_public_key,
             &validation
         );
 
@@ -60,8 +64,8 @@ impl JwtService {
 }
 
 
-impl Default for JwtService {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// impl Default for JwtService {
+//     fn default() -> Self {
+//         Self::new()
+//     }
+// }

@@ -2,6 +2,9 @@ use std::{env, fs, io};
 use std::io::BufReader;
 use std::str::FromStr;
 use std::sync::Arc;
+use base64::Engine;
+use base64::engine::general_purpose;
+use jsonwebtoken::DecodingKey;
 use opentelemetry_otlp::tonic_types::transport::{Certificate, ClientTlsConfig, Identity};
 use rustls::{RootCertStore, ServerConfig};
 use rustls::server::WebPkiClientVerifier;
@@ -13,6 +16,7 @@ use sqlx::ConnectOptions;
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
 use tracing::log::LevelFilter;
 use crate::org::unibl::etf::external_dependency_systems::message_broker::broker_util::{TLSConfigDataSource, TlsOwnedIdentityPKCS12};
+use crate::org::unibl::etf::jwt::jwks::Jwks;
 
 #[derive(Deserialize, Debug)]
 pub struct Settings {
@@ -187,11 +191,60 @@ pub struct TracingSettings {
 #[derive(serde::Deserialize, Debug, Clone)]
 pub struct JwtSettings {
     pub signer_public_key_file_path: String,
+    pub signer_public_key_url: String,
+    pub issuer: String,
 }
 
 impl JwtSettings {
-    pub fn get_signer_jwt_public_key(&self) -> Result<Vec<u8>, io::Error> {
-        fs::read(self.signer_public_key_file_path.clone())
+    pub async fn get_signer_jwt_public_key(&self, client: reqwest::Client) -> Result<DecodingKey, io::Error> {
+        match self.fetch_signer_jwt_public_key_from_online_source(client).await {
+            Ok(jwks_string) => {
+                match serde_json::from_str::<Jwks>(&jwks_string) {
+                    Ok(jwks) => {
+                        match jwks.keys.first() {
+                            Some(key) => {
+                                match general_purpose::URL_SAFE_NO_PAD
+                                    .decode(&key.x) {
+                                    Err(e) => {
+                                        tracing::error!("Failed to decode base64: {}", e);
+                                    },
+                                    Ok(x_bytes) => {
+                                        return Ok(DecodingKey::from_ed_der(&x_bytes));
+                                    }
+                                }
+                            },
+                            None => {
+                                tracing::warn!("JWKS contained no keys")
+                            }
+                        }
+                    },
+                    Err(e) => {
+                        tracing::warn!("Online JWKS was not valid JSON. {:?}", e.to_string())
+                    }
+                }
+            },
+            Err(e) => {
+                tracing::warn!("Online fetch failed: {}. Using offline key.", e);
+            }
+        }
+
+        let offline_bytes = self
+                .get_signer_jwt_public_key_from_offline_source() // This returns your Vec<u8>
+                .expect("Unable to read offline public key.");
+        // If your offline file is a PEM, use from_ed_pem.
+        // If it's raw binary DER, use from_ed_der.
+        Ok(DecodingKey::from_ed_pem(&offline_bytes)
+            .expect("Offline key was not a valid PEM"))
+
+    }
+
+        pub fn get_signer_jwt_public_key_from_offline_source(&self) -> Result<Vec<u8>, io::Error> {
+            fs::read(self.signer_public_key_file_path.clone())
+        }
+    pub async fn fetch_signer_jwt_public_key_from_online_source(&self, client: reqwest::Client) -> Result<String, reqwest::Error> {
+        tracing::info!("Fetching public key from {}", self.signer_public_key_url);
+        let response = client.get(self.signer_public_key_url.clone()).send().await?.text().await?;
+        Ok(response)
     }
 }
 

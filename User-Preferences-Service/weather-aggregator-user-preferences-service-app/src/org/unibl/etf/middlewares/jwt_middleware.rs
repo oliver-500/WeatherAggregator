@@ -1,13 +1,13 @@
 use actix_web::{
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
-    Error, HttpResponse,
+    Error,
 };
 use std::{
     future::{ready, Ready},
     pin::Pin,
     sync::{
         Arc,
-        atomic::{AtomicBool, Ordering},
+
     },
     task::{Context, Poll},
 };
@@ -144,7 +144,7 @@ where
             None => {
                 println!("Zahtjev prekinut");
 
-                let (req, _) = req.into_parts();
+                //let (req, _) = req.into_parts();
                 let err = GenericServiceError {
                     error: GenericServiceErrorDetails {
                         code: UserPreferencesServiceError::Unauthorized(Some("Credentials not present".to_string())),

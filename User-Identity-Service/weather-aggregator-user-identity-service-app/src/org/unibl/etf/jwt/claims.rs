@@ -9,4 +9,5 @@ pub struct Claims {
     pub exp: usize,       // Required for security
     pub iat: usize,       // Issued At
     pub iss: String,
+    pub kid: String,
 }

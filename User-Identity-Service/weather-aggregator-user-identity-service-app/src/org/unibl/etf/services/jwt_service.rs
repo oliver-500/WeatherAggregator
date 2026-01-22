@@ -32,6 +32,7 @@ impl JwtService {
         let my_claims = Claims {
             sub: user_id.to_owned(),
             user_type: user_type,
+            kid: "v1".to_owned(),
             iat: now.timestamp() as usize,
             exp: (now + Duration::minutes(10)).timestamp() as usize, // Valid for 10mins
             iss: "weather-aggregator-user-identity-service-app".to_owned(),
