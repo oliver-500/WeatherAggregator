@@ -1,12 +1,14 @@
 
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+use crate::org::unibl::etf::configuration::settings::JwtSettings;
 use crate::org::unibl::etf::jwt::claims::Claims;
 
 
 #[derive(Debug, Clone)]
 pub struct JwtService {
     pub signer_public_key: DecodingKey,
-    pub signer_name: String,
+
+    jwt_settings: JwtSettings
 }
 
 
@@ -16,13 +18,15 @@ impl JwtService {
     //         signer_public_key: Vec::new(),
     //     }
     // }
-    pub fn new_with_signer_private_key_and_signer_name(
+    pub fn new(
         signer_public_key: DecodingKey,
-        signer_name: String,
+
+        jwt_settings: JwtSettings,
     ) -> Self {
         Self {
             signer_public_key,
-            signer_name,
+
+            jwt_settings
         }
     }
 
@@ -31,12 +35,23 @@ impl JwtService {
 
     ))]
     pub fn validate_token(&self, token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
+        let header = jsonwebtoken::decode_header(token)?;
+        println!("JWT Header: {:#?}", header);
+        // Optional: Verify this token belongs to the 'v1' key (or whatever your kid is)
+        if let Some(kid) = header.kid {
+            if kid != "v1" {
+                // Return an error if the kid doesn't match your loaded key
+                return Err(jsonwebtoken::errors::ErrorKind::InvalidKeyFormat.into());
+            }
+        }
+
+
         // 1. Load the public key
         // 2. Define which algorithms are allowed (prevents "None" algorithm attacks)
         let mut validation = Validation::new(Algorithm::EdDSA);
 
         // Optional: Add extra checks (e.g., must have a specific issuer)
-        validation.set_issuer(&[self.signer_name.clone()]);
+        validation.set_issuer(&[self.jwt_settings.issuer.clone()]);
 
         // 3. Decode and Validate
         let token_data = decode::<Claims>(

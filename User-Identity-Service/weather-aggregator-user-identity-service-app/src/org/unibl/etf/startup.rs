@@ -6,10 +6,12 @@ use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use actix_web::dev::Server;
 use actix_web_validator::QueryConfig;
 use chrono::Utc;
+use jsonwebtoken::{DecodingKey, EncodingKey};
 use rustls::ServerConfig;
 use sqlx::PgPool;
 use tracing_actix_web::TracingLogger;
 use crate::org::unibl::etf::configuration::Settings;
+
 use crate::org::unibl::etf::controllers::auth_controller;
 use crate::org::unibl::etf::external_dependency_systems::message_broker::channel_pool::ChannelPool;
 use crate::org::unibl::etf::handlers::query_error_handler;
@@ -33,16 +35,16 @@ async fn health_check() -> impl Responder {
 
 pub fn run(
     tcp_listener: TcpListener,
-    _configuration: Settings,
+    configuration: Settings,
     server_config: Option<ServerConfig>,
-    jwt_private_key: Vec<u8>,
-    jwt_public_key: Vec<u8>,
+    jwt_private_key: EncodingKey,
+    jwt_public_key: DecodingKey,
     _is_broker_up: Arc<AtomicBool>,
     _is_db_up: Arc<AtomicBool>,
     db_pool: PgPool,
     broker_pool: Arc<ChannelPool>
 ) -> std::io::Result<Server> {
-    let jwt_service = JwtService::new_with_private_key(jwt_private_key, jwt_public_key);
+    let jwt_service = JwtService::new(jwt_private_key, jwt_public_key, configuration.jwt.clone());
     let user_identity_repository = UserIdentityRepository::new_with_db_pool(db_pool);
     let user_publisher = UserPublisher {
         broker_pool

@@ -43,9 +43,9 @@ pub fn run(
     db_pool: PgPool,
     broker_pool: Arc<ChannelPool>
 ) -> std::io::Result<Server> {
-    let jwt_service = Arc::new(JwtService::new_with_signer_private_key_and_signer_name(
+    let jwt_service = Arc::new(JwtService::new(
         signer_jwt_public_key,
-        configuration.jwt.issuer
+        configuration.jwt
     ));
 
     let _user_publisher = UserPublisher {

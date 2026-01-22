@@ -43,6 +43,15 @@ impl error::ResponseError for GenericServiceError {
             UserIdentityServiceError::RequestValidationError(_) => {
                 StatusCode::BAD_REQUEST
             },
+            UserIdentityServiceError::UserError(_) => {
+                StatusCode::BAD_REQUEST
+            },
+            UserIdentityServiceError::DatabaseError(_) => {
+                StatusCode::UNAUTHORIZED
+            },
+            UserIdentityServiceError::TamperedJwtTokenError(_) => {
+                StatusCode::UNAUTHORIZED
+            }
             _ => {
                 StatusCode::INTERNAL_SERVER_ERROR
             },

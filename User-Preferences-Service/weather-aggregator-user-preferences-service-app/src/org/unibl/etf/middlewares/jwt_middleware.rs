@@ -76,6 +76,7 @@ where
 
         match cookie {
             Some(cookie) => {
+                println!("provjera: {:?}", cookie.value());
                 match self.jwt_service.validate_token(cookie.value()) {
                     Ok(_claims) => {
                         let fut = self.service.call(req);
@@ -124,7 +125,7 @@ where
                             _ => {
                                 let err = GenericServiceError {
                                     error: GenericServiceErrorDetails {
-                                        code: UserPreferencesServiceError::ServerError(None),
+                                        code: UserPreferencesServiceError::Unauthorized(None),
                                         code_numeric: 401,
                                         message: "".to_string(),
                                         timestamp: Utc::now(),

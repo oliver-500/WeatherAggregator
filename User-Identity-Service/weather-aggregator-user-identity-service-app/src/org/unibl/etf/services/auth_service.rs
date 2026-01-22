@@ -48,7 +48,13 @@ impl AuthService {
                 user
             },
             Err(error) => {
-                return Err(UserIdentityServiceError::DatabaseError(Some(format!("Error while retrieving user by email. {}", error.to_string()))));
+                match error {
+                    sqlx::Error::RowNotFound => {
+                        return Err(UserIdentityServiceError::UserError(Some("User with that email does not exist".to_string())))
+                    }
+                    _ => return Err(UserIdentityServiceError::DatabaseError(Some(format!("Error while retrieving user by email. {}", error.to_string()))))
+                }
+
             }
         };
 

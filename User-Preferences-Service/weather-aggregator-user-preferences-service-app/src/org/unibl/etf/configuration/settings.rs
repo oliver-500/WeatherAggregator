@@ -193,6 +193,7 @@ pub struct JwtSettings {
     pub signer_public_key_file_path: String,
     pub signer_public_key_url: String,
     pub issuer: String,
+    pub kid: String,
 }
 
 impl JwtSettings {

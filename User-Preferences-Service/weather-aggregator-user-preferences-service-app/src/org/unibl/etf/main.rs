@@ -39,7 +39,7 @@ async fn main() -> std::io::Result<()> {
         .get_broker_config()
         .expect("Failed to configure RabbitMQ message broker connection.");
 
-    let subscriber = get_subscriber("User preferences Service".into(), "info".into(), std::io::stdout, configuration.tracing_agent.clone());
+    let subscriber = get_subscriber("User Preferences Service".into(), "info".into(), std::io::stdout, configuration.tracing_agent.clone());
     init_subscriber(subscriber);
 
     let http_client = reqwest::Client::new();

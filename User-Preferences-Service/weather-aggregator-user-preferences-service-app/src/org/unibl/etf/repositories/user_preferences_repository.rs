@@ -157,7 +157,7 @@ impl UserPreferencesRepository {
 
         // 1. Update the main preferences record
         //ako ne postoji guest id, ne mora fail da se desi
-        let result = sqlx::query!(
+        sqlx::query!(
         r#"
         UPDATE user_preferences
         SET user_id = $1, user_type = $2, updated_at = NOW()
@@ -168,20 +168,20 @@ impl UserPreferencesRepository {
         guest_id
     )
             .execute(&mut *tx)
-            .await;
+            .await?;
 
-        match result {
-            Ok(res) => {
-                let rows_affected = res.rows_affected();
-                if rows_affected == 0 {
-                    tracing::warn!("No guest record found to update. Continuing anyway.");
-                }
-            }
-            Err(e) => {
-                // Log the error but don't use '?' so the function continues
-                return Err(e);
-            }
-        }
+        // match result {
+        //     Ok(res) => {
+        //         let rows_affected = res.rows_affected();
+        //         if rows_affected == 0 {
+        //             tracing::warn!("No guest record found to update. Continuing anyway.");
+        //         }
+        //     }
+        //     Err(e) => {
+        //         // Log the error but don't use '?' so the function continues
+        //         return Err(e);
+        //     }
+        // }
 
         // 2. Update the history records
         sqlx::query!(

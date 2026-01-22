@@ -1,6 +1,8 @@
 use std::sync::Arc;
 use lapin::BasicProperties;
 use lapin::options::BasicPublishOptions;
+use lapin::types::FieldTable;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 use crate::org::unibl::etf::external_dependency_systems::message_broker::broker_error::BrokerError;
 use crate::org::unibl::etf::external_dependency_systems::message_broker::channel_pool::ChannelPool;
 use crate::org::unibl::etf::model::domain::messages::anonymous_user_registered::AnonymousUserRegistered;
@@ -9,6 +11,20 @@ use crate::org::unibl::etf::model::domain::messages::standard_user_registered::S
 #[derive(Debug, Clone)]
 pub struct UserPublisher {
     pub broker_pool : Arc<ChannelPool>
+}
+
+use opentelemetry::propagation::Injector;
+use lapin::types::{ShortString, AMQPValue};
+
+struct RabbitMqHeaderInjector<'a>(&'a mut FieldTable);
+
+impl<'a> Injector for RabbitMqHeaderInjector<'a> {
+    fn set(&mut self, key: &str, value: String) {
+        self.0.insert(
+            ShortString::from(key),
+            AMQPValue::LongString(value.into()),
+        );
+    }
 }
 
 impl UserPublisher {
@@ -38,6 +54,16 @@ impl UserPublisher {
             },
         };
 
+        let mut headers = FieldTable::default();
+
+        // 1. Get the current tracing context (the active Span)
+        let context = tracing::Span::current().context();
+
+        // 2. Inject that context into the RabbitMQ headers
+        opentelemetry::global::get_text_map_propagator(|propagator| {
+            propagator.inject_context(&context, &mut RabbitMqHeaderInjector(&mut headers));
+        });
+
         let publisher_confirm = match channel
             .inner
             .basic_publish(
@@ -47,7 +73,8 @@ impl UserPublisher {
                 &*payload,
                 BasicProperties::default()
                     .with_delivery_mode(2) // Persistent message
-                    .with_content_type("application/json".into()),
+                    .with_content_type("application/json".into())
+                    .with_headers(headers),
             )
             .await {
             Ok(r) => {
@@ -93,6 +120,16 @@ impl UserPublisher {
             },
         };
 
+        let mut headers = FieldTable::default();
+
+        // 1. Get the current tracing context (the active Span)
+        let context = tracing::Span::current().context();
+
+        // 2. Inject that context into the RabbitMQ headers
+        opentelemetry::global::get_text_map_propagator(|propagator| {
+            propagator.inject_context(&context, &mut RabbitMqHeaderInjector(&mut headers));
+        });
+
         let publisher_confirm = match channel
             .inner
             .basic_publish(
@@ -102,7 +139,8 @@ impl UserPublisher {
                 &*payload,
                 BasicProperties::default()
                     .with_delivery_mode(2) // Persistent message
-                    .with_content_type("application/json".into()),
+                    .with_content_type("application/json".into())
+                    .with_headers(headers),
             )
             .await {
             Ok(r) => {

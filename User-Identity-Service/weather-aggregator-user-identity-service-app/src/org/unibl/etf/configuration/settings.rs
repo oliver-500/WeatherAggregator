@@ -2,6 +2,7 @@ use std::{env, fs, io};
 use std::io::BufReader;
 use std::str::FromStr;
 use std::sync::Arc;
+use jsonwebtoken::{DecodingKey, EncodingKey};
 use opentelemetry_otlp::tonic_types::transport::{Certificate, ClientTlsConfig, Identity};
 use rustls::{RootCertStore, ServerConfig};
 use rustls::server::WebPkiClientVerifier;
@@ -188,14 +189,33 @@ pub struct TracingSettings {
 pub struct JwtSettings {
     pub private_key_file_path: String,
     pub public_key_file_path: String,
+    pub kid: String,
+    pub issuer_name: String,
 }
 
 impl JwtSettings {
-    pub fn get_jwt_private_key(&self) -> Result<Vec<u8>, io::Error> {
-        fs::read(self.private_key_file_path.clone())
+    pub fn get_jwt_private_key(&self) -> Result<EncodingKey, io::Error> {
+        match fs::read(self.private_key_file_path.clone()) {
+            Ok(bytes) => {
+                Ok(EncodingKey::from_ed_pem(&bytes).expect("Offline key was not a valid PEM"))
+            },
+            Err(e) => {
+                Err(e)
+            }
+        }
     }
-    pub fn get_jwt_public_key(&self) -> Result<Vec<u8>, io::Error> {
-        fs::read(self.public_key_file_path.clone())
+    pub fn get_jwt_public_key(&self) -> Result<DecodingKey, io::Error> {
+        match fs::read(self.public_key_file_path.clone()) {
+            Ok(bytes) => {
+                Ok(DecodingKey::from_ed_pem(&bytes).expect("Offline key was not a valid PEM"))
+            },
+            Err(e) => {
+                Err(e)
+            }
+        }
+
+
+
     }
 }
 
