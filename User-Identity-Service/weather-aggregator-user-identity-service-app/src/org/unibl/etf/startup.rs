@@ -15,6 +15,7 @@ use crate::org::unibl::etf::configuration::Settings;
 use crate::org::unibl::etf::controllers::auth_controller;
 use crate::org::unibl::etf::external_dependency_systems::message_broker::channel_pool::ChannelPool;
 use crate::org::unibl::etf::handlers::query_error_handler;
+use crate::org::unibl::etf::middlewares::conditional_blocker_middleware::ConditionalBlocker;
 use crate::org::unibl::etf::middlewares::json_500_middleware::Json500Middleware;
 use crate::org::unibl::etf::model::responses::health_check_response::HealthCheckResponse;
 use crate::org::unibl::etf::publishers::user_publisher::UserPublisher;
@@ -39,8 +40,8 @@ pub fn run(
     server_config: Option<ServerConfig>,
     jwt_private_key: EncodingKey,
     jwt_public_key: DecodingKey,
-    _is_broker_up: Arc<AtomicBool>,
-    _is_db_up: Arc<AtomicBool>,
+    is_broker_up: Arc<AtomicBool>,
+    is_db_up: Arc<AtomicBool>,
     db_pool: PgPool,
     broker_pool: Arc<ChannelPool>
 ) -> std::io::Result<Server> {
@@ -64,6 +65,7 @@ pub fn run(
             .app_data(QueryConfig::default().error_handler(query_error_handler::handle_validation_error))
             .wrap(TracingLogger::default())
             .wrap(Json500Middleware)
+            .wrap(ConditionalBlocker::new(is_db_up.clone(), is_broker_up.clone()))
             .service(
                 web::scope("/api/v1")
                     .configure(auth_controller::routes)

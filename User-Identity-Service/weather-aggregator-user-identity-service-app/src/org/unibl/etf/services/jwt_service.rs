@@ -33,12 +33,18 @@ impl JwtService {
     ))]
     pub fn generate_token(&self, user_id: &str, user_type: UserType, token_type: TokenType) -> Result<String, jsonwebtoken::errors::Error> {
         let now = Utc::now();
+
+        let exp = match token_type {
+            TokenType::ACCESS => (now + Duration::minutes(10)).timestamp(),
+            TokenType::REFRESH => (now + Duration::days(30)).timestamp(),
+        };
+
         let claims = Claims {
             sub: user_id.to_owned(),
             user_type,
             typ: token_type,
             iat: now.timestamp() as usize,
-            exp: (now + Duration::minutes(10)).timestamp() as usize, // Valid for 10mins
+            exp: exp as usize, // Valid for 10mins
             iss: self.jwt_settings.issuer_name.clone(),
         };
 

@@ -72,7 +72,7 @@ where
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         println!("provjera");
-        let cookie = req.cookie("jwt");
+        let cookie = req.cookie("access_token");
 
         match cookie {
             Some(cookie) => {

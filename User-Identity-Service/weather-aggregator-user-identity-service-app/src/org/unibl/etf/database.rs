@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use sqlx::{PgPool};
-use tokio::time::{sleep, Duration};
+use tokio::time::{sleep, timeout, Duration};
 use rand::{rng, Rng};
 
 use sqlx::postgres::{PgConnectOptions};
@@ -57,24 +57,30 @@ pub fn spawn_db_monitor(pool: PgPool, is_db_up: Arc<AtomicBool>) {
         let mut retry_number = 0;
         loop {
 
-            let is_up = match sqlx::query("SELECT 1")
-                .execute(&pool)
-                .await {
-                Ok(_) => {
-                    //tracing::info!("DB connection successfully established");
-                    true
-                }
+            let is_up = match timeout(Duration::from_secs(1), sqlx::query("SELECT 1").execute(&pool)).await {
+                // Case 1: The timeout expired before the query finished
                 Err(_) => {
                     if retry_number == max_number_of_retries {
-                        //tracing::info!("DB connection could not be successfully established");
                         false
-                    }
-                    else {
-                        retry_number = retry_number + 1;
-                        tokio::time::sleep(Duration::from_millis(500)).await;
+                    } else {
+                        retry_number += 1;
+                        tokio::time::sleep(Duration::from_millis(200)).await;
                         continue;
                     }
                 }
+                // Case 2: The query finished within 1 second
+                Ok(result) => match result {
+                    Ok(_) => true,
+                    Err(_) => {
+                        if retry_number == max_number_of_retries {
+                            false
+                        } else {
+                            retry_number += 1;
+                            tokio::time::sleep(Duration::from_millis(200)).await;
+                            continue;
+                        }
+                    }
+                },
             };
 
             is_db_up.store(is_up, Ordering::Relaxed);
@@ -86,9 +92,8 @@ pub fn spawn_db_monitor(pool: PgPool, is_db_up: Arc<AtomicBool>) {
                 (None, false) => tracing::error!("Database is unreachable"),
                 _ => {}
             }
-
             last_state = Some(is_up);
-            tokio::time::sleep(Duration::from_secs(5)).await;
+            tokio::time::sleep(Duration::from_millis(500)).await;
         }
     });
 }

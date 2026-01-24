@@ -4423,6 +4423,7 @@ dependencies = [
  "argon2",
  "chrono",
  "config",
+ "futures",
  "futures-util",
  "hex",
  "jsonwebtoken",

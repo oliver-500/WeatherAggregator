@@ -11,6 +11,7 @@ pub enum UserIdentityServiceError {
     TamperedJwtTokenError(Option<String>),
     DatabaseError(Option<String>),
     UserError(Option<String>),
+    ApplicationCurrentlyUnavailable,
 
 }
 
@@ -21,6 +22,7 @@ impl UserIdentityServiceError {
             Self::JwtCookieNotFoundError(s) => Self::JwtCookieNotFoundError(s.clone()),
             Self::TamperedJwtTokenError(s) => Self::TamperedJwtTokenError(s.clone()),
             Self::UserError(s) => Self::UserError(s.clone()),
+            Self::ApplicationCurrentlyUnavailable => Self::ApplicationCurrentlyUnavailable,
             _ => Self::ServerError(None),
         }
     }
@@ -30,6 +32,7 @@ impl UserIdentityServiceError {
             Self::JwtCookieNotFoundError(s) => s.clone().unwrap_or(String::default()),
             Self::TamperedJwtTokenError(s) => s.clone().unwrap_or(String::default()),
             Self::UserError(s) => s.clone().unwrap_or(String::default()),
+            Self::ApplicationCurrentlyUnavailable => "Application currently unavailable.".to_string(),
             _ => String::default(),
         }
 
@@ -48,6 +51,9 @@ impl UserIdentityServiceError {
             },
             UserIdentityServiceError::UserError(msg) => {
                 msg.clone().unwrap_or(String::from("UserError"))
+            },
+            UserIdentityServiceError::ApplicationCurrentlyUnavailable => {
+                String::from("Application currently unavailable.")
             }
             _ => { String::default() }
         }

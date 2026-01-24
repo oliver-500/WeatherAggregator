@@ -14,6 +14,7 @@ use crate::org::unibl::etf::configuration::Settings;
 use crate::org::unibl::etf::controllers::user_preferences_controller;
 use crate::org::unibl::etf::external_dependency_systems::message_broker::channel_pool::ChannelPool;
 use crate::org::unibl::etf::handlers::query_error_handler;
+use crate::org::unibl::etf::middlewares::conditional_blocker_middleware::ConditionalBlocker;
 use crate::org::unibl::etf::middlewares::json_500_middleware::Json500Middleware;
 use crate::org::unibl::etf::middlewares::jwt_middleware::JwtMiddleware;
 use crate::org::unibl::etf::model::responses::health_check_response::HealthCheckResponse;
@@ -38,8 +39,8 @@ pub fn run(
     configuration: Settings,
     server_config: Option<ServerConfig>,
     signer_jwt_public_key: DecodingKey,
-    _is_broker_up: Arc<AtomicBool>,
-    _is_db_up: Arc<AtomicBool>,
+    is_broker_up: Arc<AtomicBool>,
+    is_db_up: Arc<AtomicBool>,
     db_pool: PgPool,
     broker_pool: Arc<ChannelPool>
 ) -> std::io::Result<Server> {
@@ -73,6 +74,7 @@ pub fn run(
                 jwt_service: Arc::clone(&jwt_service)
             })
             .wrap(Json500Middleware)
+            .wrap(ConditionalBlocker::new(is_db_up.clone(), is_broker_up.clone()))
             .app_data(user_preferences_service.clone())
             .service(
                 web::scope("/api/v1")

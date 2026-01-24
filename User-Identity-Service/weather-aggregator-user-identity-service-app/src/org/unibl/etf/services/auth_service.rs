@@ -326,7 +326,7 @@ impl AuthService {
             .get_user_by_id(&id)
             .await {
                 Ok(user) => {
-                    tracing::info!("Successfuly fetched user by id.");
+                    tracing::info!("Successfully fetched user by id.");
                     user
                 },
                 Err(db_err) => {

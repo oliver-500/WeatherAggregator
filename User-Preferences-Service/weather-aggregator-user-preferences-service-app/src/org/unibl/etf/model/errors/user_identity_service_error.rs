@@ -12,6 +12,7 @@ pub enum UserPreferencesServiceError {
     DatabaseError(Option<String>),
     UserError(Option<String>),
     Unauthorized(Option<String>),
+    ApplicationCurrentlyUnavailable
 
 }
 
@@ -23,6 +24,7 @@ impl UserPreferencesServiceError {
             Self::TamperedJwtTokenError(s) => Self::TamperedJwtTokenError(s.clone()),
             Self::Unauthorized(s) => Self::Unauthorized(s.clone()),
             Self::UserError(s) => Self::UserError(s.clone()),
+            Self::ApplicationCurrentlyUnavailable => Self::ApplicationCurrentlyUnavailable,
             _ => Self::ServerError(None),
         }
     }
@@ -33,6 +35,7 @@ impl UserPreferencesServiceError {
             Self::TamperedJwtTokenError(s) => s.clone().unwrap_or(String::default()),
             Self::UserError(s) => s.clone().unwrap_or(String::default()),
             Self::Unauthorized(s) => s.clone().unwrap_or(String::default()),
+            Self::ApplicationCurrentlyUnavailable => "Application currently unavailable.".to_string(),
             _ => String::default(),
         }
 
@@ -54,6 +57,9 @@ impl UserPreferencesServiceError {
             },
             UserPreferencesServiceError::Unauthorized(msg) => {
                 msg.clone().unwrap_or(String::from("Unauthorized"))
+            },
+            UserPreferencesServiceError::ApplicationCurrentlyUnavailable => {
+                String::from("Application currently unavailable.")
             }
             _ => { String::default() }
         }
