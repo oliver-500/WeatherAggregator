@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use crate::org::unibl::etf::jwt::token_type::TokenType;
 use crate::org::unibl::etf::model::user_type::UserType;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -9,5 +10,6 @@ pub struct Claims {
     pub exp: usize,       // Required for security
     pub iat: usize,       // Issued At
     pub iss: String,
+    pub typ: TokenType,
 
 }

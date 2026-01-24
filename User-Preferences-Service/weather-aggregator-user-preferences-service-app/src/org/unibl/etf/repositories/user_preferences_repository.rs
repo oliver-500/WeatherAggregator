@@ -120,6 +120,7 @@ impl UserPreferencesRepository {
         item.lat,
         item.lon
     )
+
             .fetch_one(&mut *tx)
             .await?;
 

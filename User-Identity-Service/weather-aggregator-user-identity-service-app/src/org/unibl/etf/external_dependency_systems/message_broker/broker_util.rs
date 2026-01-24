@@ -116,7 +116,10 @@ pub async fn configure_channel(
         .exchange_declare(
             "user_events",
             lapin::ExchangeKind::Topic,
-            ExchangeDeclareOptions::default(),
+            ExchangeDeclareOptions {
+                durable: true, // Must be true!
+                ..Default::default()
+            },
             FieldTable::default(),
         )
         .await {

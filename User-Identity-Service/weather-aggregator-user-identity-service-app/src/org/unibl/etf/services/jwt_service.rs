@@ -2,6 +2,7 @@ use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use crate::org::unibl::etf::configuration::settings::JwtSettings;
 use crate::org::unibl::etf::jwt::claims::Claims;
+use crate::org::unibl::etf::jwt::token_type::TokenType;
 use crate::org::unibl::etf::model::user_type::UserType;
 
 #[derive(Debug)]
@@ -30,12 +31,12 @@ impl JwtService {
     #[tracing::instrument(name = "Jwt service - generate token function", skip(
 
     ))]
-    pub fn generate_token(&self, user_id: &str, user_type: UserType) -> Result<String, jsonwebtoken::errors::Error> {
+    pub fn generate_token(&self, user_id: &str, user_type: UserType, token_type: TokenType) -> Result<String, jsonwebtoken::errors::Error> {
         let now = Utc::now();
-        let my_claims = Claims {
+        let claims = Claims {
             sub: user_id.to_owned(),
-            user_type: user_type,
-
+            user_type,
+            typ: token_type,
             iat: now.timestamp() as usize,
             exp: (now + Duration::minutes(10)).timestamp() as usize, // Valid for 10mins
             iss: self.jwt_settings.issuer_name.clone(),
@@ -44,7 +45,7 @@ impl JwtService {
         let mut header = Header::new(Algorithm::EdDSA);
         header.kid = Some(self.jwt_settings.kid.clone());
 
-        encode(&header, &my_claims, &self.private_key)
+        encode(&header, &claims, &self.private_key)
     }
 
     #[tracing::instrument(name = "Jwt service - validate token function", skip(

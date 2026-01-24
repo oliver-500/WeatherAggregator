@@ -116,7 +116,10 @@ pub async fn configure_channel(
         .exchange_declare(
             "user_events",
             lapin::ExchangeKind::Topic,
-            ExchangeDeclareOptions::default(),
+            ExchangeDeclareOptions {
+                durable: true, // Must be true!
+                ..Default::default()
+            },
             FieldTable::default(),
         )
         .await {
@@ -134,6 +137,7 @@ pub async fn configure_channel(
         return Err(BrokerError::ChannelConfigurationError(error.to_string()));
 
     };
+
     let res = channel.queue_declare(
         "user_preferences_service_queue",
         QueueDeclareOptions {

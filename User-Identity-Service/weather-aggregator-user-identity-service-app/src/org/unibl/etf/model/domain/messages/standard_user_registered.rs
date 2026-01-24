@@ -15,7 +15,7 @@ impl From<&UserEntity> for StandardUserRegistered {
     fn from(entity: &UserEntity) -> Self {
         Self {
             old_id: None,
-            email: entity.email.as_ref().to_string(),
+            email: entity.email.clone().unwrap().as_ref().to_string(),
             new_id: entity.id.clone(),
             user_type: entity.user_type.clone(),
         }

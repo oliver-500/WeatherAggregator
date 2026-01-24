@@ -17,8 +17,18 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         // .service(web::resource("/auth/logout").route(web::post().to(logout_user)));
 }
 
-fn build_jwt_cookie_with_token(token: String) -> cookie::Cookie<'static> {
-    Cookie::build("jwt", token)
+fn build_cookie_with_access_token(token: String) -> cookie::Cookie<'static> {
+    Cookie::build("access_token", token)
+        .path("/")
+        .http_only(true)    // Prevents JS access (XSS protection)
+        .secure(true)
+        .max_age(Duration::days(400))// Ensures cookie is sent over HTTPS only
+        .same_site(actix_web::cookie::SameSite::Strict)
+        .finish()
+}
+
+fn build_cookie_with_refresh_token(token: String) -> cookie::Cookie<'static> {
+    Cookie::build("refresh_token", token)
         .path("/")
         .http_only(true)    // Prevents JS access (XSS protection)
         .secure(true)
@@ -34,9 +44,10 @@ async fn authenticate_standard_user(
     request_body: web::Json<LoginStandardUserRequest>,
 ) -> Result<impl Responder, GenericServiceError> {
     match auth_service.authenticate_standard_user(request_body.into_inner()).await {
-        Ok(token) => {
+        Ok((access_token, refresh_token)) => {
             Ok(HttpResponse::Ok()
-                .cookie(build_jwt_cookie_with_token(token))
+                .cookie(build_cookie_with_access_token(access_token))
+                .cookie(build_cookie_with_refresh_token(refresh_token))
                 .finish())
         },
         Err(err) => {
@@ -56,7 +67,7 @@ async fn register_standard_user(
     auth_service: web::Data<AuthService>,
 ) -> Result<impl Responder, GenericServiceError> {
     let jwt: Option<String> = if request_body.use_previously_saved_data == true {
-        match retrieve_jwt_from_cookie(&request) {
+        match retrieve_access_token_from_cookie(&request) {
             Err(e) => {
                 tracing::warn!("Use previously saved data requested but cookie not found with error: {:?}", e);
                 None
@@ -68,8 +79,13 @@ async fn register_standard_user(
     };
 
     match auth_service.register_standard_user(&request_body.into_inner(), jwt).await {
-        Ok(res) => {
-            return Ok(HttpResponse::Ok().json(res));
+        Ok((access_token, refresh_token, res)) => {
+            return Ok(
+                HttpResponse::Ok()
+                    .cookie(build_cookie_with_access_token(access_token))
+                    .cookie(build_cookie_with_refresh_token(refresh_token))
+                    .json(res)
+            )
         },
         Err(e) => {
             let err = GenericServiceError {
@@ -81,9 +97,21 @@ async fn register_standard_user(
 }
 
 
-#[tracing::instrument(name = "Auth controller - retrieve jwt from cookie function",)]
-fn retrieve_jwt_from_cookie(req: &HttpRequest) -> Result<String, UserIdentityServiceError> {
-    match req.cookie("jwt") {
+#[tracing::instrument(name = "Auth controller - retrieve access token from cookie function",)]
+fn retrieve_access_token_from_cookie(req: &HttpRequest) -> Result<String, UserIdentityServiceError> {
+    match req.cookie("access_token") {
+        Some(cookie) => {
+            Ok(cookie.clone().value().to_string())
+        }
+        None => {
+            return Err(UserIdentityServiceError::JwtCookieNotFoundError(None));
+        }
+    }
+}
+
+#[tracing::instrument(name = "Auth controller - retrieve refresh token from cookie function",)]
+fn retrieve_refresh_token_from_cookie(req: &HttpRequest) -> Result<String, UserIdentityServiceError> {
+    match req.cookie("refresh_token") {
         Some(cookie) => {
             Ok(cookie.clone().value().to_string())
         }
@@ -99,8 +127,10 @@ async fn refresh_access_token(
     req: HttpRequest,
     auth_service: web::Data<AuthService>,
 ) -> Result<impl Responder, GenericServiceError> {
-    let jwt = match retrieve_jwt_from_cookie(&req) {
+    println!("op1");
+    let access_token = match retrieve_access_token_from_cookie(&req) {
         Err(e) => {
+            println!("joj2");
             let err = GenericServiceError {
                 error: GenericServiceErrorDetails::new_user_identity_service_error(e)
             };
@@ -109,10 +139,24 @@ async fn refresh_access_token(
         Ok(jwt) => jwt
     };
 
-    match auth_service.refresh_access_token(&jwt).await {
-        Ok(token) => {
+    let refresh_token = match retrieve_refresh_token_from_cookie(&req) {
+        Err(e) => {
+            println!("joj");
+            let err = GenericServiceError {
+                error: GenericServiceErrorDetails::new_user_identity_service_error(e)
+            };
+            return Err(err);
+        },
+        Ok(jwt) => jwt
+    };
+
+    println!("op");
+    match auth_service.refresh_access_token(&access_token, &refresh_token).await {
+        Ok((refresh_token, access_token)) => {
+
             Ok(HttpResponse::Ok()
-                .cookie(build_jwt_cookie_with_token(token))
+                .cookie(build_cookie_with_access_token(access_token))
+                .cookie(build_cookie_with_refresh_token(refresh_token))
                 .finish())
         }
         Err(e) => {
@@ -130,9 +174,10 @@ async fn register_anonymous_user(
     auth_service: web::Data<AuthService>
 ) -> Result<impl Responder, GenericServiceError> {
     Ok(auth_service.register_anonymous_user().await
-           .and_then(|(token, res)| {
+           .and_then(|(access_token, refresh_token, res)| {
                Ok(HttpResponse::Ok()
-                   .cookie(build_jwt_cookie_with_token(token))
+                   .cookie(build_cookie_with_access_token(access_token))
+                   .cookie(build_cookie_with_refresh_token(refresh_token))
                    .json(res))
            })
            .map_err(|e| {

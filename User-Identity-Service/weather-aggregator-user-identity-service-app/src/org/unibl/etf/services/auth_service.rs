@@ -2,7 +2,8 @@ use std::str::FromStr;
 use secrecy::{ExposeSecret, SecretString};
 use tracing::{Instrument, Span};
 use uuid::Uuid;
-
+use crate::org::unibl::etf::jwt::token_type::TokenType;
+use crate::org::unibl::etf::model::domain::entities::user_entity::refresh_token::RefreshToken;
 use crate::org::unibl::etf::model::domain::entities::user_entity::user_password::{UserPassword};
 use crate::org::unibl::etf::model::domain::entities::user_entity::UserEntity;
 
@@ -39,7 +40,7 @@ impl AuthService {
     pub async fn authenticate_standard_user(
         &self,
         req: LoginStandardUserRequest
-    ) -> Result<String, UserIdentityServiceError> {
+    ) -> Result<(String, String), UserIdentityServiceError> {
         let user = match self
             .user_identity_repository
             .get_user_by_email(&req.email)
@@ -58,7 +59,7 @@ impl AuthService {
             }
         };
 
-        match UserPassword::verify_password(req.password.expose_secret(), user.password.as_ref()) {
+        match UserPassword::verify_password(req.password.expose_secret(), user.password_hash.unwrap().as_ref()) {
             Err(error) => {
                 return Err(UserIdentityServiceError::ServerError(Some(format!("Error while verifying password. {}", error.to_string()))));
             },
@@ -69,17 +70,30 @@ impl AuthService {
             }
         }
 
-        match self.jwt_service.generate_token(
+        let access_token = match self.jwt_service.generate_token(
             user.id.to_string().as_str(),
-            UserType::STANDARD
+            UserType::STANDARD,
+            TokenType::ACCESS
         ) {
             Err(error) => {
-                Err(UserIdentityServiceError::ServerError(Some(format!("Error while generating token. {}", error.to_string()))))
+                return Err(UserIdentityServiceError::ServerError(Some(format!("Error while generating token. {}", error.to_string()))));
             },
             Ok(token) => {
-                Ok(token)
+                token
             }
-        }
+        };
+
+
+        let refresh_token = match self.jwt_service.generate_token(&user.id.to_string(), user.user_type.clone(), TokenType::REFRESH) {
+            Ok(token) => {
+                token
+            },
+            Err(error) => {
+                return Err(UserIdentityServiceError::ServerError(Some(error.to_string())));
+            }
+        };
+
+        Ok((access_token, refresh_token))
     }
 
     #[tracing::instrument(name = "Auth service - register standard user function", skip(
@@ -89,20 +103,31 @@ impl AuthService {
         &self,
         request: &RegisterStandardUserRequest,
         jwt: Option<String>
-    ) -> Result<UserRegisteredResponse, UserIdentityServiceError> {
+    ) -> Result<(String, String, UserRegisteredResponse), UserIdentityServiceError> {
         let mut registry_entity: UserEntity = match request.try_into() {
             Ok(r) => r,
             Err(e) => return Err(UserIdentityServiceError::RequestValidationError(Some(e.to_string()))),
         };
 
-        let password =  match UserPassword::hash_password(registry_entity.password.as_ref()) {
+        let password =  match UserPassword::hash_password(registry_entity.password_hash.unwrap().as_ref()) {
             Ok(pw) => pw,
             Err(e) => return Err(UserIdentityServiceError::ServerError(Some(format!("Failed to compute hash for password: {}:", e.to_string()))))
         };
 
-        registry_entity.password = UserPassword(SecretString::from(password));
+        let refresh_token = match self.jwt_service.generate_token(&registry_entity.id.to_string(), registry_entity.user_type.clone(), TokenType::REFRESH) {
+            Ok(token) => {
+                token
+            },
+            Err(error) => {
+                return Err(UserIdentityServiceError::ServerError(Some(error.to_string())));
+            }
+        };
+
+        registry_entity.password_hash = Some(UserPassword(SecretString::from(password)));
+        registry_entity.refresh_token_hash = Some(RefreshToken(SecretString::from(RefreshToken::hash_refresh_token(refresh_token.as_str()))));
 
         let mut old_id: Option<Uuid> = None;
+
 
         if jwt.is_some() {
             let user_id = match self.jwt_service.get_claims_from_token(&jwt.unwrap()) {
@@ -118,11 +143,12 @@ impl AuthService {
                 Ok(id) => Some(id),
                 Err(e) => return Err(UserIdentityServiceError::ServerError(Some(e.to_string()))),
             };
+
         }
 
-        let res = match self
+        let user = match self
             .user_identity_repository
-            .insert_user(&mut registry_entity)
+            .insert_user(&mut registry_entity, old_id)
             .await {
             Ok(r) => r,
             Err(db_err) => {
@@ -136,11 +162,17 @@ impl AuthService {
             },
         };
 
-        let res_clone = res.clone();
+
+
+
+
+
+
+        let user_clone = user.clone();
         let user_publisher_clone = self.user_publisher.clone();
 
         tokio::spawn( async move {
-            let mut event: StandardUserRegistered = (&res_clone).into();
+            let mut event: StandardUserRegistered = (&user_clone).into();
 
             if let Some(id) = old_id {
                 event.old_id = Some(id);
@@ -157,21 +189,62 @@ impl AuthService {
         }.instrument(Span::current()));
 
         let res = UserRegisteredResponse {
-            id: res.id,
+            id: user.id,
         };
-        Ok(res)
+
+        let access_token = match self.jwt_service.generate_token(&user.id.to_string(), user.user_type.clone(), TokenType::ACCESS) {
+            Ok(token) => {
+                token
+            },
+            Err(error) => {
+                return Err(UserIdentityServiceError::ServerError(Some(error.to_string())));
+            }
+        };
+
+
+
+        Ok((access_token, refresh_token, res))
     }
 
-    #[tracing::instrument(name = "Auth service - register anonymous user function", skip(
-        self
-    ))]
-    pub async fn register_anonymous_user(&self) -> Result<(String, UserRegisteredResponse), UserIdentityServiceError> {
+    #[tracing::instrument(name = "Auth service - register anonymous user function",
+        skip(self))
+    ]
+    pub async fn register_anonymous_user(&self) -> Result<(String, String, UserRegisteredResponse), UserIdentityServiceError> {
         let user_id = Uuid::new_v4();
+        let refresh_token = match self.jwt_service.generate_token(user_id.clone().to_string().as_str(), UserType::GUEST, TokenType::REFRESH) {
+            Ok(token) => {
+                token
+            },
+            Err(error) => {
+                return Err(UserIdentityServiceError::ServerError(Some(error.to_string())));
+            }
+        };
+
+        let user_entity = UserEntity {
+            id: user_id.clone(),
+            password_hash: None,
+            email: None,
+            user_type: UserType::GUEST,
+            is_locked: false,
+            refresh_token_hash: Some(RefreshToken(SecretString::from(RefreshToken::hash_refresh_token(refresh_token.as_str())))),
+        };
+
+        match self.user_identity_repository
+            .insert_user(&user_entity, None)
+            .await {
+            Ok(_r) => {
+                tracing::info!("Successfully inserted user to database.");
+            },
+            Err(db_err) => {
+                tracing::error!("Failed to insert a user to database.");
+                return Err(UserIdentityServiceError::DatabaseError(Some(format!("{:?}", db_err.to_string()))))
+            }
+        }
+
         let user = AnonymousUserRegistered {
             user_type: UserType::GUEST,
             id: user_id.clone(),
         };
-
         let user_publisher_clone = self.user_publisher.clone();
 
         tokio::spawn( async move {
@@ -179,21 +252,20 @@ impl AuthService {
                 .publish_anonymous_user_registered_event(user)
                 .await {
                     Ok(_) => {
-
+                        tracing::info!("Successfully published a message");
                     },
                     Err(e) => {
                         tracing::error!("Failed to publish message: Error: {:?}", e);
                     }
             }
-        }.instrument(Span::current())
-        );
+        }.instrument(Span::current()));
 
-        match self.jwt_service.generate_token(&user_id.to_string(), UserType::GUEST) {
-            Ok(token) => {
+        match self.jwt_service.generate_token(&user_id.to_string(), UserType::GUEST, TokenType::ACCESS) {
+            Ok(access_token) => {
                 let res = UserRegisteredResponse {
                     id: user_id,
                 };
-                Ok((token, res))
+                Ok((access_token, refresh_token, res))
             },
             Err(error) => {
                 Err(UserIdentityServiceError::ServerError(Some(error.to_string())))
@@ -202,52 +274,100 @@ impl AuthService {
     }
 
     #[tracing::instrument(name = "Auth service - refresh access token function", skip(
-
+        self
     ))]
-    pub async fn refresh_access_token(&self, token: &str) -> Result<String, UserIdentityServiceError> {
-
-        match self.jwt_service.validate_token(token) {
-            Ok(_claims) => return Ok(token.to_string()),
+    pub async fn refresh_access_token(&self, access_token: &str, refresh_token: &str) -> Result<(String, String), UserIdentityServiceError> {
+        //access token is already valid, no need for refreshing, return the same token
+        let error = match self.jwt_service.validate_token(access_token) {
+            Ok(_claims) => {
+                tracing::info!("Access token is already valid. Not generating new one.");
+                return Ok((access_token.to_string(), refresh_token.to_string()))
+            },
             Err(error) => {
-                match *error.kind() {
-                    jsonwebtoken::errors::ErrorKind::ExpiredSignature => {
-                        //if token is expired get sub from expired token
-                        let claims = self.jwt_service.get_claims_from_token(token);
-
-                        if let Err(e) = claims {
-                            tracing::error!("Could not extract sub from jwt claims: {}.", e);
-                            return Err(UserIdentityServiceError::TamperedJwtTokenError(None))
-                        }
-
-                        let claims = claims.unwrap();
-
-                        //generate new token with sub
-                        match self.jwt_service.generate_token(&claims.sub.to_string(), claims.user_type) {
-                            Ok(token) => {
-
-                                return Ok(token)
-                            },
-                            Err(error) => {
-                                return Err(UserIdentityServiceError::ServerError(Some(error.to_string())));
-                            }
-                        }
-
-                    },
-                    jsonwebtoken::errors::ErrorKind::InvalidSignature => {
-                        tracing::error!("Token signature is wrong! Possible tampered token.");
-                        return Err(UserIdentityServiceError::TamperedJwtTokenError(None))
-                    },
-                    _ => {
-                        tracing::error!("Token validation failed!");
-                        return Err(UserIdentityServiceError::ServerError(None))
-                    }
-                };
+                error
             }
+        };
+
+        //refresh token if only it has expired
+        let sub = match *error.kind() {
+            jsonwebtoken::errors::ErrorKind::ExpiredSignature => {
+                //if token is expired get sub from expired token
+                let claims = self.jwt_service.get_claims_from_token(access_token);
+
+                if let Err(e) = claims {
+                    tracing::error!("Could not extract sub from jwt claims: {}.", e);
+                    return Err(UserIdentityServiceError::TamperedJwtTokenError(None))
+                }
+
+                let claims = claims.unwrap();
+                claims.sub.to_string()
+            },
+            jsonwebtoken::errors::ErrorKind::InvalidSignature => {
+                tracing::error!("Token signature is wrong! Possible tampered token.");
+                return Err(UserIdentityServiceError::TamperedJwtTokenError(None))
+            },
+            _ => {
+                tracing::error!("Token validation failed!");
+                return Err(UserIdentityServiceError::ServerError(None))
+            }
+        };
+
+        let id = Uuid::from_str(sub.clone().as_str());
+
+        let id = match id {
+            Ok(id) => id,
+            Err(_e) => {
+                tracing::error!("Invalid id found in provided jwt.");
+                return Err(UserIdentityServiceError::TamperedJwtTokenError(Some(format!("Invalid id found in jwt."))))
+            }
+        };
+
+        let user = match self.user_identity_repository
+            .get_user_by_id(&id)
+            .await {
+                Ok(user) => {
+                    tracing::info!("Successfuly fetched user by id.");
+                    user
+                },
+                Err(db_err) => {
+                    tracing::error!("Failed to fetch user by id.");
+                    return Err(UserIdentityServiceError::DatabaseError(Some(format!("{:?}", db_err.to_string()))))
+                }
+        };
+
+        if let None = user.refresh_token_hash {
+            tracing::error!("Refresh token not found in database");
+            return Err(UserIdentityServiceError::ServerError(Some("Refresh token not found in db.".to_string())))
         }
+        let refresh_token_hash = user.refresh_token_hash.unwrap();
 
+        if !RefreshToken::verify_token(refresh_token, refresh_token_hash.0.expose_secret()) {
+            tracing::error!("Refresh token stored in database does not match the one provided in request.");
+            return Err(UserIdentityServiceError::TamperedJwtTokenError(Some("Refresh token invalid.".to_string())))
+        };
+
+        let access_token = match self.jwt_service.generate_token(&user.id.to_string(), user.user_type.clone(), TokenType::ACCESS) {
+            Ok(token) => {
+               token
+            },
+            Err(error) => {
+                tracing::error!("Failed to generate jwt token.");
+                return Err(UserIdentityServiceError::ServerError(Some(error.to_string())));
+            }
+        };
+
+        let refresh_token = match self.jwt_service.generate_token(&user.id.to_string(), user.user_type.clone(), TokenType::REFRESH) {
+            Ok(token) => {
+                token
+            },
+            Err(error) => {
+                tracing::error!("Failed to generate jwt token.");
+                return Err(UserIdentityServiceError::ServerError(Some(error.to_string())));
+            }
+        };
+
+        Ok((access_token, refresh_token))
     }
-
-
 
 }
 
