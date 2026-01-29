@@ -7,7 +7,7 @@ use crate::org::unibl::etf::model::errors::adapter_service_error::AdapterService
 
 use crate::org::unibl::etf::model::errors::geocoding_error::{GeocodingGenericError};
 use crate::org::unibl::etf::model::responses::geocoding_response::{GeocodingResponse, LocationCandidate};
-use crate::org::unibl::etf::model::responses::uniform_current_weather_response::capitalize;
+
 
 #[derive(Debug)]
 pub struct GeocodingService {

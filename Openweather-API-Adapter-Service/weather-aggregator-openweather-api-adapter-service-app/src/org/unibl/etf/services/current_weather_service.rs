@@ -1,13 +1,17 @@
 
-
 use reqwest::StatusCode;
 use reqwest_middleware::ClientWithMiddleware;
 use secrecy::ExposeSecret;
-use crate::org::unibl::etf::configuration::settings::{ProviderSettings};
+use crate::org::unibl::etf::configuration::settings::{Settings};
+
 use crate::org::unibl::etf::model::errors::openweather_api_error::{OpenWeatherAPIError};
 use crate::org::unibl::etf::model::errors::adapter_service_error::{AdapterServiceError};
+use crate::org::unibl::etf::model::requests::current_weather_request::CurrentWeatherRequest;
+
 use crate::org::unibl::etf::model::responses::openweather_current_weather_response::{OpenWeatherAPICurrentWeatherResponse};
+use crate::org::unibl::etf::model::responses::uniform_current_weather_response::UniformCurrentWeatherResponse;
 use crate::org::unibl::etf::repositories::provider_repository::ProviderRepository;
+use crate::org::unibl::etf::services::geocoding_service::GeocodingService;
 
 #[derive(Debug)]
 pub struct CurrentWeatherService {
@@ -42,17 +46,18 @@ impl CurrentWeatherService {
     }
 
 
-    #[tracing::instrument(name = "Get Current Weather Data by Coordinates Service", skip(client, provider_settings))]
-    pub async fn get_current_weather_by_coordinates(
+    #[tracing::instrument(name = "Get Current Weather Data by Coordinates Service", skip(client, settings))]
+    pub async fn get_current_weather(
         &self,
-        (lat, lon): (f64, f64),
+        req: CurrentWeatherRequest,
         client: &ClientWithMiddleware,
-        provider_settings: &ProviderSettings,
-        redis_pool: &deadpool_redis::Pool
-    ) -> Result<OpenWeatherAPICurrentWeatherResponse, AdapterServiceError> {
+        settings: &Settings,
+        redis_pool: &deadpool_redis::Pool,
+        geocoding_service: &GeocodingService
+    ) -> Result<UniformCurrentWeatherResponse, AdapterServiceError> {
         match self.check_if_ratelimit_is_exceeded(
-            provider_settings.requests_per_30_mins,
-            provider_settings.name.as_str(),
+            settings.provider.requests_per_30_mins,
+            settings.provider.name.as_str(),
             redis_pool
         ).await {
             Ok(exceeded) => {
@@ -68,11 +73,37 @@ impl CurrentWeatherService {
         }
 
 
-        let response = client.get(format!("{}/{}", provider_settings.base_api_url, provider_settings.current_weather_endpoint).as_str())
+        let candidate = if req.location_name.is_some() {
+            let candidate = match geocoding_service.geocode_location(
+                req.location_name.clone().unwrap_or("".to_string()).as_str(),
+                client,
+                5,
+                &settings.geocoding_service
+            ).await {
+                Ok(candidate) => {
+                    tracing::info!("Successfully geocoded location. Result: {:?}", candidate);
+                    candidate
+                },
+                Err(e) => return {
+                    tracing::error!("Could not geocode location with error: {:?}", e);
+                    Err(e)
+                },
+            };
+            Some(candidate)
+        } else {
+            None
+        };
+
+        let (lat, lon) = match &candidate {
+            Some(cand) => (cand.lat, cand.lon),
+            None => (req.lat.unwrap(), req.lon.unwrap()) //validation done earlier
+        };
+
+        let response = client.get(format!("{}/{}", settings.provider.base_api_url, settings.provider.current_weather_endpoint).as_str())
             .query(&[
                 ("lat", &lat.to_string()),
                 ("lon", &lon.to_string()),
-                ("appid", &provider_settings.api_key.expose_secret().to_string()),
+                ("appid", &settings.provider.api_key.expose_secret().to_string()),
                 ("units", &"metric".to_string()),
             ])
             .send()
@@ -81,7 +112,7 @@ impl CurrentWeatherService {
 
         if response.status().is_success() {
             match self.provider_repository.increment_number_of_requests(
-                provider_settings.name.as_str(),
+                settings.provider.name.as_str(),
                 redis_pool,
             ).await {
                 Ok(new_value) => {
@@ -105,7 +136,26 @@ impl CurrentWeatherService {
                     )))
                 })?;
 
-            Ok(data)
+
+
+            let response = UniformCurrentWeatherResponse::try_from(data)
+                .and_then(|mut weather_data| {
+                    match candidate {
+                        Some(cand) => {
+                            weather_data.set_state_region_province_or_entity(cand.state.clone());
+                        },
+                        None => {
+
+                        }
+                    }
+                    Ok(weather_data)
+                })
+                .map_err(|e| {
+                    tracing::error!("Was not able to get transform weather data to uniform format with error: {:?}", e.get_message());
+                    e
+                })?;
+
+            Ok(response)
         }
         else {
             let status = response.status();
