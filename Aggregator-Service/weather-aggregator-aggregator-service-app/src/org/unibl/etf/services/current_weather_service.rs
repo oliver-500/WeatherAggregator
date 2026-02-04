@@ -32,8 +32,10 @@ impl CurrentWeatherService {
         providers_settings: web::Data<Vec<ProviderSettings>>,
         cache_service_settings: web::Data<CacheServiceSettings>,
     ) -> Result<CurrentWeatherResponse, AggregatorError> {
+        println!("op2");
         let get_cache_req = query.build_retrieve_cache_request();
 
+        println!("op3");
         let cache_candidates: Vec<CurrentWeatherResponse> = match get_cache_req {
             Ok(get_cache_req) => {
                 match query.cache_get(&get_cache_req, client.as_ref(), cache_service_settings.as_ref()).await {
@@ -58,6 +60,7 @@ impl CurrentWeatherService {
                 match e {
                     AggregatorError::CacheNotSupported(_) => {
                         tracing::error!("Cache not supported. {:?}", e);
+                        println!("op4");
                         Vec::new()
                     },
                     e => {
@@ -68,7 +71,7 @@ impl CurrentWeatherService {
         };
 
 
-
+        println!("op5");
         let req = query.build_downstream_request()?;
         let futures = providers_settings.iter().map(|provider| {
             let client = client.clone();

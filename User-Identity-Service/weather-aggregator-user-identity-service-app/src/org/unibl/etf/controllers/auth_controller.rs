@@ -13,8 +13,9 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         .service(web::resource("/auth/anonymous").route(web::get().to(register_anonymous_user)))
         .service(web::resource("/auth/register").route(web::post().to(register_standard_user)))
         .service(web::resource("/auth/login").route(web::post().to(authenticate_standard_user)))
-        .service(web::resource("/auth/refresh").route(web::get().to(refresh_access_token)));
-        // .service(web::resource("/auth/logout").route(web::post().to(logout_user)));
+        .service(web::resource("/auth/refresh").route(web::get().to(refresh_access_token)))
+        .service(web::resource("/auth/user_info").route(web::get().to(get_user_info)))
+        .service(web::resource("/auth/logout").route(web::post().to(logout_user)));
 }
 
 fn build_cookie_with_access_token(token: String) -> cookie::Cookie<'static> {
@@ -33,8 +34,27 @@ fn build_cookie_with_refresh_token(token: String) -> cookie::Cookie<'static> {
         .http_only(true)    // Prevents JS access (XSS protection)
         .secure(true)
         .max_age(Duration::days(400))// Ensures cookie is sent over HTTPS only
-        .same_site(actix_web::cookie::SameSite::Strict)
+        .same_site(cookie::SameSite::Strict)
         .finish()
+}
+
+pub fn build_logout_cookie(cookie_name: &str) -> Cookie<'static> {
+    Cookie::build(cookie_name.to_owned(), "")
+        .path("/")
+        .http_only(true)
+        .secure(true)
+        // Setting Max-Age to 0 tells the browser to delete it immediately
+        .max_age(Duration::ZERO)
+        // Setting an expiration in the past is a fallback for older browsers
+        .expires(actix_web::cookie::time::OffsetDateTime::UNIX_EPOCH)
+        .same_site(cookie::SameSite::Strict)
+        .finish()
+}
+
+#[tracing::instrument(name = "Auth controller - logout user function", )]
+async fn logout_user(
+) -> Result<impl Responder, GenericServiceError> {
+    Ok(HttpResponse::Ok().cookie(build_logout_cookie("refresh_token")).cookie(build_logout_cookie("access_token")).finish())
 }
 
 #[tracing::instrument(name = "Auth controller - authenticate standard user function",
@@ -51,6 +71,10 @@ async fn authenticate_standard_user(
                 .finish())
         },
         Err(err) => {
+            if let err = UserIdentityServiceError::TamperedJwtTokenError {
+
+            }
+
             let err = GenericServiceError {
                 error: GenericServiceErrorDetails::new_user_identity_service_error(err)
             };
@@ -104,7 +128,7 @@ fn retrieve_access_token_from_cookie(req: &HttpRequest) -> Result<String, UserId
             Ok(cookie.clone().value().to_string())
         }
         None => {
-            return Err(UserIdentityServiceError::JwtCookieNotFoundError(None));
+            return Err(UserIdentityServiceError::JwtCookieNotFoundError(Some("JWT access token not found in cookies.".to_string())));
         }
     }
 }
@@ -116,7 +140,7 @@ fn retrieve_refresh_token_from_cookie(req: &HttpRequest) -> Result<String, UserI
             Ok(cookie.clone().value().to_string())
         }
         None => {
-            return Err(UserIdentityServiceError::JwtCookieNotFoundError(None));
+            return Err(UserIdentityServiceError::JwtCookieNotFoundError(Some("JWT refresh token not found in cookies.".to_string())));
         }
     }
 }
@@ -127,10 +151,8 @@ async fn refresh_access_token(
     req: HttpRequest,
     auth_service: web::Data<AuthService>,
 ) -> Result<impl Responder, GenericServiceError> {
-    println!("op1");
     let access_token = match retrieve_access_token_from_cookie(&req) {
         Err(e) => {
-            println!("joj2");
             let err = GenericServiceError {
                 error: GenericServiceErrorDetails::new_user_identity_service_error(e)
             };
@@ -188,4 +210,37 @@ async fn register_anonymous_user(
            })?
     )
 }
+
+#[tracing::instrument(name = "Auth controller - get user info function",
+    skip(auth_service))]
+async fn get_user_info(
+    auth_service: web::Data<AuthService>,
+    req: HttpRequest,
+) -> Result<impl Responder, GenericServiceError> {
+
+    let access_token = match retrieve_access_token_from_cookie(&req) {
+        Err(e) => {
+            let err = GenericServiceError {
+                error: GenericServiceErrorDetails::new_user_identity_service_error(e)
+            };
+            return Err(err);
+        },
+        Ok(jwt) => jwt
+    };
+
+    Ok(auth_service.get_user_info(access_token).await
+        .and_then(|res| {
+            Ok(HttpResponse::Ok()
+                .json(res))
+        })
+        .map_err(|e| {
+            tracing::error!("Was not able to get user info with error: {:?}", e);
+            GenericServiceError {
+                error: GenericServiceErrorDetails::new_user_identity_service_error(e)
+            }
+        })?
+    )
+}
+
+
 

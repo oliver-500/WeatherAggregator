@@ -1,0 +1,407 @@
+import React, { useEffect, useState } from 'react';
+import { registerUser, loginUser } from '../api/auth';
+import isEmail from 'validator/lib/isEmail';
+import type { UserInfo } from '../model/UserInfo';
+import type { RegisterUserRequest } from '../model/requests/RegisterUserRequest';
+import type { LoginUserRequest } from '../model/requests/LoginUserRequest.ts';
+import toast from 'react-hot-toast';
+import { TemperatureToggle } from './TemperatureToggle.tsx';
+import type { UserPreferencesWithHistory } from '../model/UserPreferencesWithLocationHistory.ts';
+
+type TopBarProps = {
+  user_info?: UserInfo | null;
+  onUnitChange: (newSystem: "METRIC" | "IMPERIAL") => void;
+  userPreferencesWithHistory?: UserPreferencesWithHistory | null;
+};
+
+export default function TopBar(
+  {
+    user_info, 
+    onUnitChange,
+    userPreferencesWithHistory
+  }: TopBarProps) {
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+ 
+  const initialState = {
+    email: 'pera@gmail.com',
+    password: 'Pera2gmail.com',
+    confirmPassword: 'Pera2gmail.com',
+    usePrevouslySavedData: true
+  };
+  const [formData, setFormData] = useState(initialState);
+  const [isSending, setIsSending] = useState(false);
+
+  const isButtonEnabled =
+  authMode === 'login' ? 
+    (formData.email.length > 0 && formData.password.length > 0 && !isSending) :
+    (formData.email.length > 0 && formData.password.length > 0 && formData.confirmPassword.length > 0 && !isSending);
+
+  useEffect(() => {
+    if (!isModalOpen) {
+        setFormData(initialState);
+    }
+  }, [isModalOpen]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setAuthMode('login');
+    setFormData(initialState); 
+  };
+
+  const handleSubmit = async () => {
+    if (isSending) return; // Prevent multiple submissions
+    setIsSending(true);
+    
+    if (formData.password.length < 8) {
+        toast.error("Password must be at least 8 characters."); 
+        setIsSending(false);
+        return;
+    }
+
+    if (!isEmail(formData.email)) {
+        toast.error("Please enter a valid email address.");
+        setIsSending(false);
+        return;
+    }
+
+    if (authMode === 'register') {
+      if (formData.password !== formData.confirmPassword) {
+        toast.error("Passwords do not match.");
+        setIsSending(false);
+        return;
+      }
+
+      const requestData: RegisterUserRequest = {
+        email: formData.email, 
+        password: formData.password, 
+        use_previously_saved_data: formData.usePrevouslySavedData 
+      };
+
+      try {
+        await registerUser(requestData);
+        setIsModalOpen(false);
+        toast.success("Registration successful! Please log in.");
+        setAuthMode('login'); // Switch to login after successful registration
+      } catch (err: any) {
+        const statusCode = err.response?.status;
+
+        if (statusCode === 409) {
+          toast.error(err.response.data?.error?.message);
+        } else if (statusCode === 400) {
+          toast.error(err.response.data?.error?.message);
+        } else {
+          toast.error("Registration failed. Please try again.");
+        }
+      }
+      setIsSending(false);
+  
+    } else {
+      const requestData: LoginUserRequest = { 
+        email: formData.email, 
+        password: formData.password
+      };
+      try {
+        await loginUser(requestData);
+        setIsModalOpen(false);
+        setIsSending(false);
+        return;
+      } catch (err: any) {
+        
+        const statusCode = err.response?.status;
+
+        if (statusCode === 400 || statusCode === 409 || statusCode === 401) {
+          toast.error(err.response.data?.error?.message);
+        } else {
+          toast.error("Login failed. Please try again.");
+        }
+        setIsSending(false);
+      }
+    }
+  };
+
+  const logoutUser = async () => {
+    try {
+      await logoutUser();
+    } catch (err) {
+      toast.error("Logout failed. Please try again.");
+    }
+  }
+
+  return (
+    <>
+    <header style={styles.container}>
+      <input
+        type="text"
+        placeholder="Search by location name..."
+        style={styles.search}
+      />
+      <div style={styles.right}>
+        {user_info?.email ? (   
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span>{user_info?.email}</span>
+            <TemperatureToggle   
+              unit={userPreferencesWithHistory?.preferences.unit_system === "METRIC" ? 'C' : 'F'}
+              onChange={(newUnit: string) => {
+                console.log(newUnit + " selected in TopBar");
+                const system = newUnit === 'C' ? "METRIC" : "IMPERIAL";
+                onUnitChange(system); // Just call the prop!
+              }}
+            >
+            </TemperatureToggle>
+
+            <button
+              style={styles.button}
+              onClick={() => logoutUser()}
+            >
+              Log out
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>     
+           <TemperatureToggle   
+            unit={userPreferencesWithHistory?.preferences.unit_system === "METRIC" ? 'C' : 'F'}
+              onChange={(newUnit: string) => {
+                console.log(newUnit + " selected in TopBar");
+                const system = newUnit === 'C' ? "METRIC" : "IMPERIAL";
+                onUnitChange(system); // Just call the prop!
+              }}
+           >            
+           </TemperatureToggle>
+            <button
+              style={styles.button}
+              onClick={() => setIsModalOpen(true)}
+            >
+              Sign In
+            </button>
+          </div>     
+        )}
+      </div>
+    </header>
+
+    {isModalOpen && (
+        <div style={styles.overlay} >
+          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <button style={styles.closeX} onClick={closeModal}>
+                &times; 
+            </button>
+            <h3 style={styles.modalTitle}>
+                {authMode === 'login' ? 'Sign In' : 'Create Account'}
+            </h3>
+            <input 
+                type="email" 
+                placeholder="Email" 
+                style={styles.modalInput}
+                value={formData.email}
+                onChange={handleChange}
+                maxLength={50}
+                name="email"
+                />
+            <input 
+                type="password" 
+                placeholder="Password" 
+                style={styles.modalInput} 
+                value={formData.password} 
+                onChange={handleChange}
+                maxLength={20}
+                name="password" />
+
+            {/* Show extra field only for register */}
+            {authMode === 'register' && (
+                <input 
+                    type="password" 
+                    placeholder="Confirm Password" 
+                    style={styles.modalInput} 
+                    value={formData.confirmPassword}
+                    maxLength={20}
+                    onChange={handleChange} 
+                    name="confirmPassword" />
+            )}
+
+            {authMode === 'register' && (
+                <div style={styles.checkboxContainer}>
+                    <input 
+                    type="checkbox" 
+                    id="specialAccess"
+                    checked={formData.usePrevouslySavedData}
+                    onChange={(e) => setFormData({...formData, usePrevouslySavedData: e.target.checked})}
+                    />
+                    <label htmlFor="specialAccess" style={styles.checkboxLabel}>
+                      Use Previously Saved Data
+                    </label>
+                </div>
+            )}
+
+            {/* Dynamic Button */}
+            <button style={{
+              ...styles.button,
+              ...( !isButtonEnabled ? styles.buttonDisabled : {} )
+              }} onClick={handleSubmit} disabled={!isButtonEnabled}>
+                {authMode === 'login' ? 'Login' : 'Sign Up'}
+            </button>
+
+
+
+           
+            <br></br>
+            {/* Dynamic Footer Link */}
+            <p style={styles.footerText}>
+                {authMode === 'login' ? (
+                <>
+                    Not registered? 
+                    <span style={styles.link} onClick={() => setAuthMode('register')}> Register here</span>
+                </>
+                ) : (
+                <>
+                    Already have an account? 
+                    <span style={styles.link} onClick={() => setAuthMode('login')}> Sign In here</span>
+                </>
+                )}
+            </p>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+const styles = {
+  container: {
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    padding: "12px 16px",
+    borderBottom: "1px solid #ddd",
+    gap: "16px",
+    boxSizing: "border-box" as "border-box",
+    overflow: "hidden"
+  },
+  search: {
+    flex: 1,
+    padding: "8px 12px",
+    fontSize: "16px",
+  },
+  right: {
+    whiteSpace: "nowrap",
+  },
+  button: {
+    backgroundColor: "aliceblue", // A vibrant "Action" color
+    color: "black",
+    padding: "10px 20px",
+    borderRadius: "8px",
+    border: "none",
+    fontWeight: "600",
+    fontSize: "14px",
+    cursor: "pointer",
+    transition: "all 0.2s ease", // Smooth transition for hover effects
+    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+    },
+    overlay: {
+    position: "fixed" as "fixed",
+    top: 0,
+    left: 0,
+    width: "100vw",
+    height: "100vh",
+    backgroundColor: "rgba(0, 0, 0, 0.5)", // Darken the background
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
+  },
+  buttonDisabled: {
+    backgroundColor: "#d1d5db", // A muted grey
+    color: "#9ca3af",           // Faded text color
+    cursor: "not-allowed",      // Shows the "circle-slash" icon
+    boxShadow: "none",          // Remove depth to look "flat"
+  },
+  modal: {
+    position: "relative" as "relative",
+    backgroundColor: "white",
+    padding: "40px 32px 32px 32px",
+    borderRadius: "12px",
+    display: "flex",
+    flexDirection: "column" as "column",
+    gap: "12px",
+    width: "300px",
+    boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+  },
+  modalInput: {
+    padding: "10px",
+    borderRadius: "6px",
+    border: "1px solid #ddd",
+  },
+  loginSubmit: {
+    backgroundColor: "aliceblue",
+    color: "black",
+    padding: "10px",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontWeight: "600",
+    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+  },
+  closeBtn: {
+    background: "none",
+    border: "none",
+    color: "#666",
+    cursor: "pointer",
+    fontSize: "12px",
+    
+  },
+  modalTitle: {
+    margin: "0 0 8px 0",       // Remove default top margin, add a little bottom space
+    fontSize: "18px",          // Slightly larger than the button text
+    fontWeight: "600",         // Match the button's thickness
+    fontFamily: "inherit",     // Force it to use your app's font
+    color: "#1a1a1a",          // A clean, near-black color
+    textAlign: "center" as "center", // Optional: centers the title
+  },
+  closeX: {
+    position: "absolute" as "absolute",
+    top: "12px",
+    right: "12px",
+    background: "none",
+    border: "none",
+    fontSize: "20px",
+    color: "#999",
+    cursor: "pointer",
+    lineHeight: "1",
+    padding: "4px",
+  },
+  footerText: {
+    marginTop: "8px",
+    fontSize: "14px",
+    textAlign: "center" as "center",
+    color: "#666", // Subtle grey for the main text
+    fontFamily: "inherit",
+  },
+  link: {
+    color: "#007AFF", // Brand blue for the link
+    fontWeight: "600",
+    cursor: "pointer",
+    marginLeft: "4px",
+    textDecoration: "none",
+  },
+    checkboxContainer: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    marginTop: "8px",
+    padding: "4px",
+    },
+    checkboxLabel: {
+    fontSize: "14px",
+    color: "#444",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    },
+ 
+};

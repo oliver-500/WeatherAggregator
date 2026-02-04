@@ -34,7 +34,7 @@ async fn get_current_weather_data_by_coordinates(
         request: query.into_inner(),
         cache_service: CurrentWeatherCacheService::default(),
     };
-
+    println!("op1");
     Ok(current_weather_service.get_current_weather(
         query,
         http_client,

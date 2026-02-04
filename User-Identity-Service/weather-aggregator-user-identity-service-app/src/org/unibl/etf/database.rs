@@ -93,7 +93,7 @@ pub fn spawn_db_monitor(pool: PgPool, is_db_up: Arc<AtomicBool>) {
                 _ => {}
             }
             last_state = Some(is_up);
-            tokio::time::sleep(Duration::from_millis(500)).await;
+            tokio::time::sleep(Duration::from_millis(1000)).await;
         }
     });
 }

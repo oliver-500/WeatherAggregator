@@ -3,7 +3,7 @@ use actix_web::{error, HttpResponse};
 use actix_web::http::StatusCode;
 use chrono::{DateTime, Utc};
 use serde::{Serialize};
-
+use crate::org::unibl::etf::controllers::auth_controller::build_logout_cookie;
 use crate::org::unibl::etf::model::errors::user_identity_service_error::UserIdentityServiceError;
 
 #[derive(Serialize, Debug, Clone)]
@@ -44,13 +44,19 @@ impl error::ResponseError for GenericServiceError {
                 StatusCode::BAD_REQUEST
             },
             UserIdentityServiceError::UserError(_) => {
-                StatusCode::BAD_REQUEST
+                StatusCode::CONFLICT
             },
             UserIdentityServiceError::DatabaseError(_) => {
                 StatusCode::INTERNAL_SERVER_ERROR
             },
             UserIdentityServiceError::TamperedJwtTokenError(_) => {
                 StatusCode::UNAUTHORIZED
+            },
+            UserIdentityServiceError::Unauthorized(_) => {
+                StatusCode::UNAUTHORIZED
+            },
+            UserIdentityServiceError::JwtCookieNotFoundError(_) => {
+                StatusCode::BAD_REQUEST
             }
             _ => {
                 StatusCode::INTERNAL_SERVER_ERROR
@@ -65,11 +71,17 @@ impl error::ResponseError for GenericServiceError {
 
         // 2. Sanitize the clone
         sanitized_details.code = sanitized_details.code.get_sanitized_error();
+        let mut response = HttpResponse::build(self.status_code());
 
-        HttpResponse::build(self.status_code())
-            .json(GenericServiceError {
-                error: sanitized_details,
-            })
+        // Check for the specific error and add the cookie
+        if let UserIdentityServiceError::TamperedJwtTokenError(_) = self.error.code {
+            response.cookie(build_logout_cookie("access_token")).cookie(build_logout_cookie("refresh_token"));
+            
+        }
+
+        response.json(GenericServiceError {
+            error: sanitized_details,
+        })
     }
 }
 

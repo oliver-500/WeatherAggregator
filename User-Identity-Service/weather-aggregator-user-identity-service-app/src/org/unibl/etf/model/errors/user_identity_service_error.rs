@@ -12,6 +12,7 @@ pub enum UserIdentityServiceError {
     DatabaseError(Option<String>),
     UserError(Option<String>),
     ApplicationCurrentlyUnavailable,
+    Unauthorized(Option<String>),
 
 }
 
@@ -23,6 +24,7 @@ impl UserIdentityServiceError {
             Self::TamperedJwtTokenError(s) => Self::TamperedJwtTokenError(s.clone()),
             Self::UserError(s) => Self::UserError(s.clone()),
             Self::ApplicationCurrentlyUnavailable => Self::ApplicationCurrentlyUnavailable,
+            Self::Unauthorized(s) => Self::Unauthorized(s.clone()),
             _ => Self::ServerError(None),
         }
     }
@@ -33,6 +35,7 @@ impl UserIdentityServiceError {
             Self::TamperedJwtTokenError(s) => s.clone().unwrap_or(String::default()),
             Self::UserError(s) => s.clone().unwrap_or(String::default()),
             Self::ApplicationCurrentlyUnavailable => "Application currently unavailable.".to_string(),
+            Self::Unauthorized(s) => s.clone().unwrap_or(String::default()),
             _ => String::default(),
         }
 
@@ -54,6 +57,9 @@ impl UserIdentityServiceError {
             },
             UserIdentityServiceError::ApplicationCurrentlyUnavailable => {
                 String::from("Application currently unavailable.")
+            },
+            UserIdentityServiceError::Unauthorized(msg) => {
+                msg.clone().unwrap_or(String::from("Unauthorized"))
             }
             _ => { String::default() }
         }
@@ -64,7 +70,7 @@ impl UserIdentityServiceError {
             UserIdentityServiceError::RequestValidationError(_) => 400,
             UserIdentityServiceError::JwtCookieNotFoundError(_) => 404,
             UserIdentityServiceError::TamperedJwtTokenError(_) => 400,
-            UserIdentityServiceError::UserError(_) => 400,
+            UserIdentityServiceError::UserError(_) => 409,
             UserIdentityServiceError::ServerError(_) => 500,
 
             UserIdentityServiceError::ConnectionError(_) => {
@@ -73,6 +79,7 @@ impl UserIdentityServiceError {
             UserIdentityServiceError::ResponseParsingError(_) => {
                 500
             },
+            UserIdentityServiceError::Unauthorized(_) => 401,
             _ => {
                 500
             },

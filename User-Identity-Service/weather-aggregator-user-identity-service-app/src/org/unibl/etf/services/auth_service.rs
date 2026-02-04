@@ -4,6 +4,7 @@ use tracing::{Instrument, Span};
 use uuid::Uuid;
 use crate::org::unibl::etf::jwt::token_type::TokenType;
 use crate::org::unibl::etf::model::domain::entities::user_entity::refresh_token::RefreshToken;
+use crate::org::unibl::etf::model::domain::entities::user_entity::user_email::UserEmail;
 use crate::org::unibl::etf::model::domain::entities::user_entity::user_password::{UserPassword};
 use crate::org::unibl::etf::model::domain::entities::user_entity::UserEntity;
 
@@ -12,6 +13,7 @@ use crate::org::unibl::etf::model::domain::messages::standard_user_registered::S
 use crate::org::unibl::etf::model::errors::user_identity_service_error::UserIdentityServiceError;
 use crate::org::unibl::etf::model::requests::login_standard_user_request::LoginStandardUserRequest;
 use crate::org::unibl::etf::model::requests::register_standard_user_request::RegisterStandardUserRequest;
+use crate::org::unibl::etf::model::responses::user_info_response::UserInfoResponse;
 use crate::org::unibl::etf::model::responses::user_registered_response::UserRegisteredResponse;
 use crate::org::unibl::etf::model::user_type::UserType;
 use crate::org::unibl::etf::publishers::user_publisher::UserPublisher;
@@ -33,6 +35,61 @@ impl AuthService {
     //         user_identity_repository: UserIdentityRepository::default()
     //     }
     // }
+
+    #[tracing::instrument(name = "Auth service - get user info function", skip(
+        self
+    ))]
+    pub async fn get_user_info(
+        &self,
+        access_token: String
+    ) -> Result<UserInfoResponse, UserIdentityServiceError> {
+        let user_id = match self.jwt_service.validate_token(access_token.as_str()) {
+            Ok(claims) => {
+                tracing::info!("Access token is valid. Extracting user id.");
+                claims.sub
+            },
+            Err(error) => {
+                tracing::error!("Failed to validate token with error: {:?}", error.to_string());
+                return Err(UserIdentityServiceError::Unauthorized(Some("Access token invalid".to_string())));
+            }
+        };
+
+        let user_id: Uuid = match Uuid::from_str(user_id.as_str()) {
+            Ok(id) => id,
+            Err(e) => return Err(UserIdentityServiceError::ServerError(Some(e.to_string()))),
+        };
+
+
+        let user = match self
+            .user_identity_repository
+            .get_user_by_id(&user_id)
+            .await {
+            Ok(user) => {
+                tracing::info!("Successfully fetched user by id.");
+                user
+            },
+            Err(e) => match e {
+                // Specifically catch the "Not Found" case
+                sqlx::Error::RowNotFound => {
+                    return Err(UserIdentityServiceError::UserError(Some("User with that id does not exist.".to_string())))
+                }
+                // Catch other DB issues (like unique violations or connection loss)
+                _ => {
+                    tracing::error!("Database error: {:?}", e);
+                    return Err(UserIdentityServiceError::DatabaseError(Some(e.to_string())))
+                }
+            }
+        };
+
+        let res = UserInfoResponse {
+            email: user.email,
+            user_type: user.user_type,
+            user_id: user.id,
+        };
+
+        Ok(res)
+
+    }
 
     #[tracing::instrument(name = "Auth service - authenticate standard user function", skip(
         self
@@ -65,7 +122,7 @@ impl AuthService {
             },
             Ok(validated) => {
                 if !validated {
-                    return Err(UserIdentityServiceError::UserError(Some(format!("Invalid password."))));
+                    return Err(UserIdentityServiceError::Unauthorized(Some(format!("Invalid password."))));
                 }
             }
         }
@@ -190,6 +247,8 @@ impl AuthService {
 
         let res = UserRegisteredResponse {
             id: user.id,
+            user_type: user.user_type.clone(),
+            user_email: user.email.clone(),
         };
 
         let access_token = match self.jwt_service.generate_token(&user.id.to_string(), user.user_type.clone(), TokenType::ACCESS) {
@@ -200,8 +259,6 @@ impl AuthService {
                 return Err(UserIdentityServiceError::ServerError(Some(error.to_string())));
             }
         };
-
-
 
         Ok((access_token, refresh_token, res))
     }
@@ -264,6 +321,8 @@ impl AuthService {
             Ok(access_token) => {
                 let res = UserRegisteredResponse {
                     id: user_id,
+                    user_type: UserType::GUEST,
+                    user_email: None,
                 };
                 Ok((access_token, refresh_token, res))
             },
@@ -302,13 +361,14 @@ impl AuthService {
                 let claims = claims.unwrap();
                 claims.sub.to_string()
             },
-            jsonwebtoken::errors::ErrorKind::InvalidSignature => {
-                tracing::error!("Token signature is wrong! Possible tampered token.");
-                return Err(UserIdentityServiceError::TamperedJwtTokenError(None))
+            jsonwebtoken::errors::ErrorKind::InvalidSignature |
+            jsonwebtoken::errors::ErrorKind::InvalidToken => {
+                tracing::warn!("Potentially tampered or malformed token detected.");
+                return Err(UserIdentityServiceError::TamperedJwtTokenError(None));
             },
             _ => {
-                tracing::error!("Token validation failed!");
-                return Err(UserIdentityServiceError::ServerError(None))
+                tracing::error!("Internal JWT validation error: {:?}", error.kind());
+                return Err(UserIdentityServiceError::ServerError(None));
             }
         };
 

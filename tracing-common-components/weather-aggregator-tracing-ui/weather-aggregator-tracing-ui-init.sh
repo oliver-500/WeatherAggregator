@@ -22,21 +22,21 @@ echo "Elasticsearch is ready:"
 
 
 if [[ -n "$ELASTIC_USERNAME" ]] && [[ -n "$ELASTIC_PASSWORD" ]]; then
-    echo "Found Elasticsearch credentials. Dynamically configuring basic auth..."
+  echo "Found Elasticsearch credentials."
 
-    # Use sed to find the 'server_urls:' line and append the basic auth block after it.
-    # The indentation is critical (8 spaces for 'auth:', 10 for 'basic:', 12 for username/password).
-    # NOTE: The target line must be unique in the file!
+  if grep -q "auth:" "$CONFIG_FILE"; then
+    echo "Auth already present, skipping injection"
+  else
     sed -i "/server_urls/a\\
           auth:\\
             basic:\\
               username: \"$ELASTIC_USERNAME\"\\
               password: \"$ELASTIC_PASSWORD\"" "$CONFIG_FILE"
-
-    echo "Basic authentication fields successfully added to the configuration."
+    echo "Basic authentication injected."
+  fi
 else
-    echo "Elasticsearch credentials not found in environment variables. Exiting."
-	exit 1
+  echo "Elasticsearch credentials missing. Exiting."
+  exit 1
 fi
 
 	

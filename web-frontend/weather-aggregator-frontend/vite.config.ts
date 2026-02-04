@@ -18,14 +18,20 @@ export default defineConfig({
         target: 'https://localhost:9010',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api\/auth/, '/api/v1')
+        rewrite: (path) => path.replace(/^\/api\/auth/, '/api/v1/auth'),
+        configure: (proxy, _options) => {
+        proxy.on('proxyReq', (proxyReq, req, _res) => {
+          // You can debug here to see if headers are present
+          console.log('Sending Request to Backend:', req.headers.cookie);
+        });
+      },
       },
       // Service 3: Settings
       '/api/user': {
         target: 'https://localhost:9011',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api\/user/, '/api/v1')
+        rewrite: (path) => path.replace(/^\/api\/user/, '/api/v1/user')
       }
     }
   }

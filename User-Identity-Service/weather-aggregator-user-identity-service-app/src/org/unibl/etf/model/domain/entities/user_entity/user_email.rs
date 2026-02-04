@@ -1,6 +1,7 @@
+use serde::Serialize;
 use crate::org::unibl::etf::model::domain::errors::user_error::UserError;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct UserEmail(pub String);
 
 impl UserEmail {
