@@ -35,7 +35,7 @@ impl JwtService {
         let now = Utc::now();
 
         let exp = match token_type {
-            TokenType::ACCESS => (now + Duration::minutes(10)).timestamp(),
+            TokenType::ACCESS => (now + Duration::minutes(1)).timestamp(),
             TokenType::REFRESH => (now + Duration::days(30)).timestamp(),
         };
 

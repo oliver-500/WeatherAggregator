@@ -47,7 +47,10 @@ impl error::ResponseError for GenericServiceError {
                 StatusCode::UNAUTHORIZED
             },
             UserPreferencesServiceError::UserError(_) => {
-                StatusCode::BAD_REQUEST
+                StatusCode::FORBIDDEN
+            },
+            UserPreferencesServiceError::HistoryItemAlreadyExistsError(_) => {
+                StatusCode::CONFLICT
             },
             UserPreferencesServiceError::TamperedJwtTokenError(_) => {
                 StatusCode::UNAUTHORIZED

@@ -12,7 +12,8 @@ pub enum UserPreferencesServiceError {
     DatabaseError(Option<String>),
     UserError(Option<String>),
     Unauthorized(Option<String>),
-    ApplicationCurrentlyUnavailable
+    ApplicationCurrentlyUnavailable,
+    HistoryItemAlreadyExistsError(Option<String>),
 
 }
 
@@ -25,6 +26,7 @@ impl UserPreferencesServiceError {
             Self::Unauthorized(s) => Self::Unauthorized(s.clone()),
             Self::UserError(s) => Self::UserError(s.clone()),
             Self::ApplicationCurrentlyUnavailable => Self::ApplicationCurrentlyUnavailable,
+            Self::HistoryItemAlreadyExistsError(s) => Self::HistoryItemAlreadyExistsError(s.clone()),
             _ => Self::ServerError(None),
         }
     }
@@ -36,6 +38,7 @@ impl UserPreferencesServiceError {
             Self::UserError(s) => s.clone().unwrap_or(String::default()),
             Self::Unauthorized(s) => s.clone().unwrap_or(String::default()),
             Self::ApplicationCurrentlyUnavailable => "Application currently unavailable.".to_string(),
+            Self::HistoryItemAlreadyExistsError(s) => s.clone().unwrap_or(String::default()),
             _ => String::default(),
         }
 
@@ -73,6 +76,7 @@ impl UserPreferencesServiceError {
             UserPreferencesServiceError::UserError(_) => 400,
             UserPreferencesServiceError::Unauthorized(_) => 401,
             UserPreferencesServiceError::ServerError(_) => 500,
+            UserPreferencesServiceError::HistoryItemAlreadyExistsError(_) => 409,
 
             UserPreferencesServiceError::ConnectionError(_) => {
                 500

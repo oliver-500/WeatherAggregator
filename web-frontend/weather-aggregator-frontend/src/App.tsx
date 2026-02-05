@@ -5,7 +5,7 @@ import type { UserPreferencesWithHistory } from './model/UserPreferencesWithLoca
 import { getUserPreferencesWithHistory, updateUserPreferencesWithHistory } from './api/user';
 import { Toaster } from 'react-hot-toast';
 import TopBar from './components/TopBar';
-import { getUserInfo, logoutUser, refreshAccessToken, registerAnonymousUser } from './api/auth';
+import { getUserInfo, refreshAccessToken, registerAnonymousUser, logoutUser} from './api/auth';
 import type { UserInfo } from './model/UserInfo';
 import toast from 'react-hot-toast';
 import type { UpdateUserPreferencesRequest } from './model/requests/UpdateUserPreferencesRequest';
@@ -58,6 +58,7 @@ function App() {
 
           if (status === 409) {
             await logoutUser();
+            setUserInfo(null)
             await registerAnonymousUser();
           }
 
@@ -70,6 +71,9 @@ function App() {
               await refreshAccessToken();
             } catch {
               toast.error("Session expired. Please log in again.");
+              await logoutUser();
+              setUserInfo(null);
+              
               return; // Stop looping if user MUST take manual action
             }
           } else {
@@ -139,7 +143,7 @@ function App() {
   return (
     <div style={styles.app}>
       <Toaster position="bottom-center" reverseOrder={false} />
-      <TopBar user_info={userInfo} userPreferencesWithHistory={userPreferencesWithHistory} onUnitChange={handleUnitChange} />
+      <TopBar user_info={userInfo} userPreferencesWithHistory={userPreferencesWithHistory} onUnitChange={handleUnitChange} setUserInfo={setUserInfo}/>
       <Home userPreferencesWithHistory={userPreferencesWithHistory} syncUserPreferences={syncUserPreferences} />   
     </div>
   )

@@ -31,7 +31,7 @@ export const loginUser = async (loginUserRequest : LoginUserRequest) => {
       // The server is dead/offline
           finalMessage = "Server is unreachable.";
       }
-
+     
       const apiError = new ApiError(finalMessage, isServerError, error.response?.status, error);
       // Throw the specific message so the component can use it
       throw apiError;
@@ -116,7 +116,6 @@ export const registerAnonymousUser = async () => {
 
 export const logoutUser = async () => {
   authApi.post('/logout').then(() => {
-    window.location.reload();
   }).catch((err: any) => {
     throw err;
   });

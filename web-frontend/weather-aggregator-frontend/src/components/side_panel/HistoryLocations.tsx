@@ -11,7 +11,7 @@ type Props = {
   userPreferencesWithHistory?: UserPreferencesWithHistory | null;
   favorite: CurrentWeather | null;
   history: CurrentWeather[];
-  onHistoryChange?: (history: CurrentWeather[]) => void;
+
 };
 
 
@@ -25,18 +25,7 @@ export default function HistoryLocations(
 
 
 
-  // useEffect(() => {
-  //   userPreferencesWithHistory?.history.forEach(item => {
-  //     let res = getWeatherDataByCoordinates(item.lat, item.lon);
 
-  //     res.then(data => {
-  //       data.isFavorite = favorite?.location.name === data.location.name;
-  //       onHistoryChange && onHistoryChange([...history, data]);
-  //     });
-
-  //   });
-
-  // }, [userPreferencesWithHistory]);
 
 
   return (

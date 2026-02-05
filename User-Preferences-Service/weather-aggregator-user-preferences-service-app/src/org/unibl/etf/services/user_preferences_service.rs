@@ -113,9 +113,18 @@ impl UserPreferencesService {
                     location_id: id
                 })
             },
-            Err(e) => {
-                tracing::error!("Error while saving history item data {}", e);
-                return Err(UserPreferencesServiceError::DatabaseError(Some(format!("Error while saving history item: {}", e.to_string()))))
+            Err(db_err) => {
+                tracing::error!("Error while saving history item data {}", db_err);
+                if let Some(db_err) = db_err.as_database_error() {
+                    // "23505" is the Postgres code for unique_violation
+                    if db_err.code() == Some(std::borrow::Cow::Borrowed("23505")) {
+                        return Err(UserPreferencesServiceError::HistoryItemAlreadyExistsError(Some("History item already exists.".to_string())));
+                    }
+                }
+
+
+
+                return Err(UserPreferencesServiceError::DatabaseError(Some(format!("Error while saving history item: {}", db_err.to_string()))))
             }
         }
     }

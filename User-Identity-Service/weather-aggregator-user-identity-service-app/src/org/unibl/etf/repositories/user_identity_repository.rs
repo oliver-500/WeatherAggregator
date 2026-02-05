@@ -21,7 +21,7 @@ impl UserIdentityRepository {
         }
     }
 
-    #[tracing::instrument(name = "Saving new standard user in the database method", skip())]
+    #[tracing::instrument(name = "Saving new user in the database method", skip())]
     pub async fn insert_user<'a>(
         &self,
         user_entity: &'a UserEntity,
@@ -144,6 +144,38 @@ impl UserIdentityRepository {
             is_locked: row.is_locked,
             refresh_token_hash: Some(RefreshToken(SecretString::from(row.refresh_token_hash))),
         })
+    }
+
+    #[tracing::instrument(
+        name = "Updating user refresh token hash in the database",
+        skip(self, hash)
+    )]
+    pub async fn update_refresh_token_hash(
+        &self,
+        user_id: Uuid,
+        hash: Option<SecretString>, // Or your specific wrapper type
+    ) -> Result<(), sqlx::Error> {
+        let mut tx = self.db_pool.begin().await?;
+
+        sqlx::query!(
+        r#"
+        UPDATE wa_user
+        SET refresh_token_hash = $1
+        WHERE id = $2
+        "#,
+        hash.as_ref().map(|t| t.expose_secret()),
+        user_id
+    )
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| {
+                tracing::error!("Failed to update refresh token: {:?}", e);
+                e
+            })?;
+
+        tx.commit().await?;
+
+        Ok(())
     }
 
 }

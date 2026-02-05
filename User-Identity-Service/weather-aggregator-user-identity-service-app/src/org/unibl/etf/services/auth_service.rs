@@ -382,7 +382,7 @@ impl AuthService {
             }
         };
 
-        let user = match self.user_identity_repository
+        let mut user = match self.user_identity_repository
             .get_user_by_id(&id)
             .await {
                 Ok(user) => {
@@ -391,7 +391,20 @@ impl AuthService {
                 },
                 Err(db_err) => {
                     tracing::error!("Failed to fetch user by id.");
-                    return Err(UserIdentityServiceError::DatabaseError(Some(format!("{:?}", db_err.to_string()))))
+                    match db_err {
+                        sqlx::Error::RowNotFound => {
+                            return Err(UserIdentityServiceError::TamperedJwtTokenError(Some("User with that id does not exist.".to_string())))
+                        }
+                        // Catch other DB issues (like unique violations or connection loss)
+                        _ => {
+                            tracing::error!("Database error: {:?}", db_err);
+                            return Err(UserIdentityServiceError::DatabaseError(Some(db_err.to_string())))
+                        }
+                    }
+
+
+
+
                 }
         };
 
@@ -425,6 +438,20 @@ impl AuthService {
                 return Err(UserIdentityServiceError::ServerError(Some(error.to_string())));
             }
         };
+
+        let refresh_token_hash = Some(RefreshToken(SecretString::from(RefreshToken::hash_refresh_token(refresh_token.as_str()))));
+
+        match self.user_identity_repository
+            .update_refresh_token_hash(user.id, Some(refresh_token_hash.unwrap().0))
+            .await {
+            Ok(_r) => {
+                tracing::info!("Successfully inserted user to database.");
+            },
+            Err(db_err) => {
+                tracing::error!("Failed to insert a user to database.");
+                return Err(UserIdentityServiceError::DatabaseError(Some(format!("{:?}", db_err.to_string()))))
+            }
+        }
 
         Ok((access_token, refresh_token))
     }

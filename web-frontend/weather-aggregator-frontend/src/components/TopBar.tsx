@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { registerUser, loginUser } from '../api/auth';
+import { registerUser, loginUser, logoutUser as logoutUserAuth, getUserInfo } from '../api/auth';
 import isEmail from 'validator/lib/isEmail';
 import type { UserInfo } from '../model/UserInfo';
 import type { RegisterUserRequest } from '../model/requests/RegisterUserRequest';
@@ -7,18 +7,23 @@ import type { LoginUserRequest } from '../model/requests/LoginUserRequest.ts';
 import toast from 'react-hot-toast';
 import { TemperatureToggle } from './TemperatureToggle.tsx';
 import type { UserPreferencesWithHistory } from '../model/UserPreferencesWithLocationHistory.ts';
+import type { RegistrationResponse } from '../model/responses/RegistrationResponse.ts';
+import { authApi } from '../api/client.ts';
+import type { ApiError } from '../model/errors/ApiError.ts';
 
 type TopBarProps = {
   user_info?: UserInfo | null;
   onUnitChange: (newSystem: "METRIC" | "IMPERIAL") => void;
   userPreferencesWithHistory?: UserPreferencesWithHistory | null;
+  setUserInfo: (userInfo: UserInfo | null) => void;
 };
 
 export default function TopBar(
   {
     user_info, 
     onUnitChange,
-    userPreferencesWithHistory
+    userPreferencesWithHistory,
+    setUserInfo
   }: TopBarProps) {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -87,9 +92,15 @@ export default function TopBar(
       };
 
       try {
-        await registerUser(requestData);
+        let res: RegistrationResponse = await registerUser(requestData);
+        setUserInfo( {
+          email: res.user_email,
+          user_id: res.user_id,
+          user_type: res.user_type
+        });
+
         setIsModalOpen(false);
-        toast.success("Registration successful! Please log in.");
+        toast.success("Registration successful.");
         setAuthMode('login'); // Switch to login after successful registration
       } catch (err: any) {
         const statusCode = err.response?.status;
@@ -111,16 +122,20 @@ export default function TopBar(
       };
       try {
         await loginUser(requestData);
+        let res = await getUserInfo();
+        setUserInfo(res);
         setIsModalOpen(false);
         setIsSending(false);
+        toast.success("Login successfull.");
         return;
       } catch (err: any) {
         
-        const statusCode = err.response?.status;
+        const statusCode = err.status;
 
         if (statusCode === 400 || statusCode === 409 || statusCode === 401) {
-          toast.error(err.response.data?.error?.message);
+          toast.error(err.message);
         } else {
+         
           toast.error("Login failed. Please try again.");
         }
         setIsSending(false);
@@ -130,7 +145,9 @@ export default function TopBar(
 
   const logoutUser = async () => {
     try {
-      await logoutUser();
+      await logoutUserAuth();
+      setUserInfo(null)
+      toast.success("Logout successfull.")
     } catch (err) {
       toast.error("Logout failed. Please try again.");
     }

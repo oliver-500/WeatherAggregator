@@ -11,7 +11,7 @@ type Props = {
   userPreferencesWithHistory?: UserPreferencesWithHistory | null;
   favorite: CurrentWeather | null;
   history: CurrentWeather[];
-  onHistoryChange: (history: CurrentWeather[]) => void;
+
 };
 
 export default function SidePanel({
@@ -20,7 +20,7 @@ export default function SidePanel({
   onStarClick: handleStarClick,
   favorite: favorite,
   history: history,
-  onHistoryChange: onHistoryChange
+
 }: Props) {
 
   return (
@@ -39,7 +39,6 @@ export default function SidePanel({
       <HistoryLocations
         userPreferencesWithHistory={userPreferencesWithHistory}
         favorite={favorite}
-        onHistoryChange={onHistoryChange}
         history={history}
         onStarClick={handleStarClick}
 

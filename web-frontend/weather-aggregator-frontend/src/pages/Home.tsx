@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import  { getWeatherDataByCoordinates, getWeatherDataByIpAddress }  from '../api/weather';
 
 import 'leaflet/dist/leaflet.css';
@@ -23,7 +23,6 @@ export default function Home({
   const [current, setCurrent] = useState<CurrentWeather | null>(null);
   const [history, setHistory] =  useState<CurrentWeather[]>([]);
   const [favorite, setFavorite] =  useState<CurrentWeather|null>(null);
-  const [historyLoaded, setHistoryLoaded] = useState(false);
 
   const normalize = (num: number) => num.toFixed(2);
 
@@ -44,39 +43,12 @@ export default function Home({
 
   useEffect(() => {
     if (!userPreferencesWithHistory) {
-      setHistory([]);
       return;
     }
 
-    const loadHistoryData = async () => {
-      const historyItems = userPreferencesWithHistory.history;
-
-      // A. Fetch all history weather in parallel
-      const historyPromises = historyItems.map(item => 
-        getWeatherDataByCoordinates(item.lat, item.lon)
-      );
-
-      const resolvedHistory = await Promise.all(historyPromises);
-
-      const prefData = userPreferencesWithHistory.preferences;
-
-      const processedHistory = resolvedHistory.map(data => ({
-        ...data,
-        isFavorite: (
-          normalize(data.location.lat) === normalize(prefData.favorite_lat || 0) &&
-          normalize(data.location.lon) === normalize(prefData.favorite_lon || 0) &&
-          data.location.name === (prefData.favorite_location_name)
-        )
-      }));
-
-      setHistory(processedHistory);
-      setHistoryLoaded(true);
-
-    };
-
     const loadFavoriteData = async () => {
       if (userPreferencesWithHistory.preferences.favorite_lat && userPreferencesWithHistory.preferences.favorite_lon) {
-        getWeatherDataByCoordinates(
+        await getWeatherDataByCoordinates(
           userPreferencesWithHistory.preferences.favorite_lat, 
           userPreferencesWithHistory.preferences.favorite_lon,
         ).then(data => {
@@ -88,63 +60,84 @@ export default function Home({
       }
     };
 
+    const loadHistoryData = async () => {
+      const historyItems = userPreferencesWithHistory.history;
+
+      // A. Fetch all history weather in parallel
+      const historyPromises = historyItems.map(async item => 
+        await getWeatherDataByCoordinates(item.lat, item.lon)
+      );
+
+      const resolvedHistory = await Promise.all(historyPromises);
+
+      const prefData = userPreferencesWithHistory.preferences;
+
+     
+      console.log(resolvedHistory.length, " ", historyItems.length);
+      const processedHistory = resolvedHistory.map(data => {
+        console.log("op");
+        console.log(normalize(data.location.lat) === normalize(prefData.favorite_lat || 0) &&
+          normalize(data.location.lon) === normalize(prefData.favorite_lon || 0) &&
+          data.location.name === (prefData.favorite_location_name));
+        return ({
+        ...data,
+        isFavorite: (
+          normalize(data.location.lat) === normalize(prefData.favorite_lat || 0) &&
+          normalize(data.location.lon) === normalize(prefData.favorite_lon || 0) &&
+          data.location.name === (prefData.favorite_location_name)
+        )
+      });
+    });
+
+
+      console.log(processedHistory.length, " processed history length")
+      setHistory(processedHistory);
+    };
+
     const loadAllData = async () => {
+      console.log("Loading favorite data...");
       await loadFavoriteData();
+      console.log("Loading favorite data done.");
+      console.log("Loading history data...");
       await loadHistoryData();
+      console.log("Loading history data done.");
     };
 
     loadAllData();
-    
-
   }, [userPreferencesWithHistory]);
 
-// 2. Process History & Favorites when Preferences or Current changes
+  const hasAddedCurrentRef = useRef(false);
+
   useEffect(() => {
-    // Guard: We need preferences to know WHAT history to fetch
-      if (!userPreferencesWithHistory) return;
-      if (!historyLoaded) return;
-      if (!current) return;
+    if (!userPreferencesWithHistory || !current) return;
+    if (hasAddedCurrentRef.current) return;
 
-      // C. Handle the "Current" location logic
-    if (current) {
-      console.log("op", history.length);
-      const isCurrentInHistory = history.some(item => {
-          console.log(
-          "Comparing history item:",
-           item.location.name, 
-           item.location.lat, " ",
-           item.location.lon, " ",
-           "with current:", 
-           current.location.name, " ", 
-           current.location.lat, " ",
-           current.location.lon
-          );
-        return normalize(item.location.lat) === normalize(current.location.lat) &&
-        normalize(item.location.lon) === normalize(current.location.lon) &&
-        item.location.name === current.location.name
-      }
-        
-      );
+    // 3. Check existing history (standard check)
+    console.log(userPreferencesWithHistory.history.length, " z ");
+    const isCurrentAlreadyInHistory = userPreferencesWithHistory.history.some(item => {
+      return normalize(item.lat) === normalize(current.location.lat) &&
+      normalize(item.lon) === normalize(current.location.lon) &&
+      item.location_name === current.location.name
+    });
 
-      console.log("isCurrentInHistory", isCurrentInHistory);
-      if (!isCurrentInHistory) {
-        console.log("jao");
-        // Add to local state
-        history.push({ ...current, isFavorite: false });
-        
-        // Sync to backend
-        addHistoryItem({
-          user_id: userPreferencesWithHistory.preferences.user_id,
-          location_name: current.location.name || "Unknown Location",
-          lat: current.location.lat,
-          lon: current.location.lon
-        });
-      }
+    if (isCurrentAlreadyInHistory) {
+      return;
     }
 
-  
-  }, [userPreferencesWithHistory, historyLoaded, current]);
-  
+    hasAddedCurrentRef.current = true;
+
+    // 5. Update State and Backend
+    setHistory(prev => [...prev, { ...current, isFavorite: false }]);
+    
+    addHistoryItem({
+      user_id: userPreferencesWithHistory.preferences.user_id,
+      location_name: current.location.name || "Unknown Location",
+      lat: current.location.lat,
+      lon: current.location.lon
+    });
+
+    // Note: history is removed from dependencies to prevent the loop
+  }, [userPreferencesWithHistory, current]);
 
 
 function handleStarClick(entry: CurrentWeather) {
@@ -241,7 +234,6 @@ function handleStarClick(entry: CurrentWeather) {
         onStarClick={handleStarClick}
         favorite={favorite}
         history={history}
-        onHistoryChange={setHistory}
       />  
     </div> 
   );

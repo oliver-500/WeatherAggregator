@@ -69,12 +69,17 @@ pub fn run(
             .app_data(
                 actix_web_validator::JsonConfig::default().error_handler(query_error_handler::handle_validation_error)
             )
-            .wrap(TracingLogger::default())
+
             .wrap(JwtMiddleware {
                 jwt_service: Arc::clone(&jwt_service)
             })
             .wrap(Json500Middleware)
             .wrap(ConditionalBlocker::new(is_db_up.clone(), is_broker_up.clone()))
+
+
+
+
+            .wrap(TracingLogger::default())
             .app_data(user_preferences_service.clone())
             .service(
                 web::scope("/api/v1")

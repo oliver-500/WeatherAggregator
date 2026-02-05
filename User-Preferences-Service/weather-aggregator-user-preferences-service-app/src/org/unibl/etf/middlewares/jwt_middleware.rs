@@ -93,8 +93,8 @@ where
                                 //if token is expired get sub from expired token
                                 let err = GenericServiceError {
                                     error: GenericServiceErrorDetails {
-                                        code: UserPreferencesServiceError::Unauthorized(Some("Credentials expired. Please log in again.".to_string())),
-                                        code_numeric: 401,
+                                        code: UserPreferencesServiceError::UserError(Some("Credentials expired. Please log in again.".to_string())),
+                                        code_numeric: 403,
                                         message: "".to_string(),
                                         timestamp: Utc::now(),
                                     }
@@ -106,7 +106,9 @@ where
                                 return Box::pin(ready(Err(err.into())));
 
                             },
-                            jsonwebtoken::errors::ErrorKind::InvalidSignature => {
+                            jsonwebtoken::errors::ErrorKind::InvalidSignature
+                            | jsonwebtoken::errors::ErrorKind::InvalidToken
+                            => {
                                 tracing::error!("Token signature is wrong! Possible tampered token.");
                                 let err = GenericServiceError {
                                     error: GenericServiceErrorDetails {

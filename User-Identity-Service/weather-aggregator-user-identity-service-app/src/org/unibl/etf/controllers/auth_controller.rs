@@ -174,7 +174,7 @@ async fn refresh_access_token(
 
     println!("op");
     match auth_service.refresh_access_token(&access_token, &refresh_token).await {
-        Ok((refresh_token, access_token)) => {
+        Ok((access_token, refresh_token)) => {
 
             Ok(HttpResponse::Ok()
                 .cookie(build_cookie_with_access_token(access_token))

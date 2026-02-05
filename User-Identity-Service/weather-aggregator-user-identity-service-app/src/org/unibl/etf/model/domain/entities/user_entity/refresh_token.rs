@@ -18,6 +18,8 @@ impl RefreshToken {
     // When verifying, use a constant-time comparison!
     pub fn verify_token(provided_token: &str, stored_hash: &str) -> bool {
         let hashed_provided = RefreshToken::hash_refresh_token(provided_token);
+
+        println!("hashed refresh token: {} vs  {}", hashed_provided, stored_hash);
         // Use a crate like `subtle` to prevent timing attacks
         subtle::ConstantTimeEq::ct_eq(hashed_provided.as_bytes(), stored_hash.as_bytes()).into()
     }
