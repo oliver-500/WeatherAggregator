@@ -63,7 +63,8 @@ impl UserPassword {
 
         Ok(Argon2::default()
             .verify_password(password.as_bytes(), &parsed_hash)
-            .is_ok())
+            .is_ok()
+        )
     }
 }
 

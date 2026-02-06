@@ -57,6 +57,9 @@ impl error::ResponseError for GenericServiceError {
             },
             UserIdentityServiceError::JwtCookieNotFoundError(_) => {
                 StatusCode::BAD_REQUEST
+            },
+            UserIdentityServiceError::ExpiredRefreshTokenError(_) => {
+                StatusCode::FORBIDDEN
             }
             _ => {
                 StatusCode::INTERNAL_SERVER_ERROR
@@ -82,6 +85,20 @@ impl error::ResponseError for GenericServiceError {
         response.json(GenericServiceError {
             error: sanitized_details,
         })
+    }
+
+
+
+
+}
+
+impl From<UserIdentityServiceError> for GenericServiceError {
+    fn from(e: UserIdentityServiceError) -> Self {
+        // You can keep your logging here so it happens every time the conversion occurs
+        tracing::error!("{}", e.get_message());
+        Self {
+            error: GenericServiceErrorDetails::new_user_identity_service_error(e)
+        }
     }
 }
 

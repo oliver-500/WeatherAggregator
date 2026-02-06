@@ -13,6 +13,7 @@ pub enum UserIdentityServiceError {
     UserError(Option<String>),
     ApplicationCurrentlyUnavailable,
     Unauthorized(Option<String>),
+    ExpiredRefreshTokenError(Option<String>),
 
 }
 
@@ -25,6 +26,7 @@ impl UserIdentityServiceError {
             Self::UserError(s) => Self::UserError(s.clone()),
             Self::ApplicationCurrentlyUnavailable => Self::ApplicationCurrentlyUnavailable,
             Self::Unauthorized(s) => Self::Unauthorized(s.clone()),
+            Self::ExpiredRefreshTokenError(_) => Self::ExpiredRefreshTokenError(None),
             _ => Self::ServerError(None),
         }
     }
@@ -36,6 +38,7 @@ impl UserIdentityServiceError {
             Self::UserError(s) => s.clone().unwrap_or(String::default()),
             Self::ApplicationCurrentlyUnavailable => "Application currently unavailable.".to_string(),
             Self::Unauthorized(s) => s.clone().unwrap_or(String::default()),
+            Self::ExpiredRefreshTokenError(s) => s.clone().unwrap_or(String::default()),
             _ => String::default(),
         }
 
@@ -60,6 +63,9 @@ impl UserIdentityServiceError {
             },
             UserIdentityServiceError::Unauthorized(msg) => {
                 msg.clone().unwrap_or(String::from("Unauthorized"))
+            },
+            UserIdentityServiceError::ExpiredRefreshTokenError(msg) => {
+                msg.clone().unwrap_or(String::from("ExpiredRefreshTokenError"))
             }
             _ => { String::default() }
         }
@@ -71,6 +77,7 @@ impl UserIdentityServiceError {
             UserIdentityServiceError::JwtCookieNotFoundError(_) => 404,
             UserIdentityServiceError::TamperedJwtTokenError(_) => 400,
             UserIdentityServiceError::UserError(_) => 409,
+            UserIdentityServiceError::ExpiredRefreshTokenError(_) => 403,
             UserIdentityServiceError::ServerError(_) => 500,
 
             UserIdentityServiceError::ConnectionError(_) => {
@@ -86,43 +93,3 @@ impl UserIdentityServiceError {
         }
     }
 }
-//
-// impl From<AdapterError> for AggregatorError {
-//     fn from(code: AdapterError) -> Self {
-//         match code {
-//
-//             AdapterError::AmbiguousLocationNameError(candidates) => {
-//                 AggregatorError::AmbiguousLocationNameError(candidates)
-//             }
-//             AdapterError::LocationNotFoundError(s) => {
-//                 AggregatorError::LocationNotFoundError(s)
-//             }
-//             AdapterError::ServerError => {
-//                 AggregatorError::ServerError(None)
-//             }
-//
-//         }
-//     }
-// }
-//
-// impl From<CacheError> for AggregatorError {
-//     fn from(code: CacheError) -> Self {
-//         match code {
-//             CacheError::CacheMissError(_lat, _lon) => {
-//                 AggregatorError::CacheMissError
-//             }
-//             CacheError::RequestValidationError(s) => {
-//                 AggregatorError::RequestParametersValidationError(s)
-//             }
-//             CacheError::ServerError => {
-//                 AggregatorError::ServerError(None)
-//             },
-//             CacheError::StoringCacheError(s) => {
-//                 AggregatorError::StoringCacheError(s)
-//             },
-//             CacheError::OnlyPotentialMatchesFoundError(candidates) => {
-//                 AggregatorError::OnlyPotentialMatchesFoundError(candidates)
-//             }
-//         }
-//     }
-// }

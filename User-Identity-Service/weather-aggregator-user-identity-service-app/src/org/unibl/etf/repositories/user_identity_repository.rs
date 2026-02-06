@@ -1,8 +1,7 @@
 
 use secrecy::SecretString;
-use secrecy::ExposeSecret;
 use sqlx::PgPool;
-use crate::org::unibl::etf::model::domain::entities::user_entity::refresh_token::RefreshToken;
+use secrecy::ExposeSecret;
 use crate::org::unibl::etf::model::domain::entities::user_entity::user_email::UserEmail;
 use crate::org::unibl::etf::model::domain::entities::user_entity::user_password::UserPassword;
 use crate::org::unibl::etf::model::domain::entities::user_entity::UserEntity;
@@ -21,7 +20,10 @@ impl UserIdentityRepository {
         }
     }
 
-    #[tracing::instrument(name = "Saving new user in the database method", skip())]
+    #[tracing::instrument(
+        name = "Saving new user into database method",
+        skip(self)
+    )]
     pub async fn insert_user<'a>(
         &self,
         user_entity: &'a UserEntity,
@@ -31,15 +33,14 @@ impl UserIdentityRepository {
 
         sqlx::query!(
             r#"
-            INSERT INTO wa_user (id, email, password_hash, user_type, is_locked, refresh_token_hash)
-            VALUES ($1, $2, $3, $4::user_account_type, $5, $6)
+            INSERT INTO wa_user (id, email, password_hash, user_type, is_locked)
+            VALUES ($1, $2, $3, $4::user_account_type, $5)
             "#,
             user_entity.id,
             user_entity.email.as_ref().map(|e| e.0.clone()),
             user_entity.password_hash.as_ref().map(|p| p.0.expose_secret()),
             user_entity.user_type.clone() as UserType,
-            user_entity.is_locked,
-            user_entity.refresh_token_hash.as_ref().map(|t| t.0.expose_secret())
+            user_entity.is_locked
         )
             .execute(&mut *tx)
             .await
@@ -68,7 +69,10 @@ impl UserIdentityRepository {
         Ok(user_entity)
     }
 
-    #[tracing::instrument(name = "Deleting user from the database", skip(self))]
+    #[tracing::instrument(
+        name = "Deleting user from the database",
+        skip(self)
+    )]
     pub async fn delete_user_by_id(&self, id: &Uuid) -> Result<(), sqlx::Error> {
         let result = sqlx::query!(
         r#"
@@ -94,16 +98,19 @@ impl UserIdentityRepository {
     }
 
 
-    #[tracing::instrument(name = "Saving new standard user in the database method", skip())]
+    #[tracing::instrument(
+        name = "Get user by email from database method",
+        skip(self)
+    )]
     pub async fn get_user_by_email(&self, email: &str) -> Result<UserEntity, sqlx::Error> {
         let row = sqlx::query!(
-        r#"
-        SELECT id, email, password_hash, user_type as "user_type: UserType", is_locked, refresh_token_hash
-        FROM wa_user
-        WHERE email = $1
-        "#,
-        email
-    )
+            r#"
+            SELECT id, email, password_hash, user_type as "user_type: UserType", is_locked
+            FROM wa_user
+            WHERE email = $1
+            "#,
+            email
+        )
             .fetch_one(&self.db_pool)
             .await?;
 
@@ -116,16 +123,18 @@ impl UserIdentityRepository {
             password_hash: row.password_hash.map(|h| UserPassword(SecretString::from(h))),
             user_type: row.user_type,
             is_locked: row.is_locked,
-            refresh_token_hash: Some(RefreshToken(SecretString::from(row.refresh_token_hash))),
         })
     }
 
 
-    #[tracing::instrument(name = "Saving new standard user in the database method", skip())]
+    #[tracing::instrument(
+        name = "Saving new standard user in the database method",
+        skip(self)
+    )]
     pub async fn get_user_by_id(&self, id: &Uuid) -> Result<UserEntity, sqlx::Error> {
         let row = sqlx::query!(
         r#"
-        SELECT id, email, password_hash, user_type as "user_type: UserType", is_locked, refresh_token_hash
+        SELECT id, email, password_hash, user_type as "user_type: UserType", is_locked
         FROM wa_user
         WHERE id = $1
         "#,
@@ -134,7 +143,6 @@ impl UserIdentityRepository {
             .fetch_one(&self.db_pool)
             .await?;
 
-
         Ok(UserEntity {
             id: row.id,
             // .map wraps the inner String into your NewType only if it exists
@@ -142,46 +150,8 @@ impl UserIdentityRepository {
             password_hash: row.password_hash.map(|h| UserPassword(SecretString::from(h))),
             user_type: row.user_type,
             is_locked: row.is_locked,
-            refresh_token_hash: Some(RefreshToken(SecretString::from(row.refresh_token_hash))),
+
         })
     }
 
-    #[tracing::instrument(
-        name = "Updating user refresh token hash in the database",
-        skip(self, hash)
-    )]
-    pub async fn update_refresh_token_hash(
-        &self,
-        user_id: Uuid,
-        hash: Option<SecretString>, // Or your specific wrapper type
-    ) -> Result<(), sqlx::Error> {
-        let mut tx = self.db_pool.begin().await?;
-
-        sqlx::query!(
-        r#"
-        UPDATE wa_user
-        SET refresh_token_hash = $1
-        WHERE id = $2
-        "#,
-        hash.as_ref().map(|t| t.expose_secret()),
-        user_id
-    )
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| {
-                tracing::error!("Failed to update refresh token: {:?}", e);
-                e
-            })?;
-
-        tx.commit().await?;
-
-        Ok(())
-    }
-
 }
-
-// impl Default for UserIdentityRepository {
-//     fn default() -> Self {
-//         Self::new()
-//     }
-// }

@@ -41,13 +41,13 @@ impl UserPublisher {
     ) -> Result<(), BrokerError> {
 
         let payload = serde_json::to_vec(&event).map_err(|e| {
-            BrokerError::Error(format!("Payload not serializable to json. Error: {}", e.to_string()))
+            BrokerError::Error(format!("Payload not serializable to json. Exact error: {}", e.to_string()))
         })?;
 
         let channel = match self.broker_pool.get().await  {
             Err(msg) => {
-                tracing::error!("RabbitMQ channel is not available");
-                return Err(BrokerError::Error("RabbitMQ channel is not available. ".to_string() + msg.as_str()));
+                tracing::error!("RabbitMQ channel is not available.");
+                return Err(BrokerError::Error("RabbitMQ channel is not available. Exact Error: ".to_string() + msg.as_str()));
             }
             Ok(c) => {
                 c
@@ -77,23 +77,23 @@ impl UserPublisher {
                     .with_headers(headers),
             )
             .await {
-            Ok(r) => {
-                tracing::info!("Message sent successfully");
-                r
-            },
-            Err(e) => {
-                tracing::error!("Message could not be sent to broker: {}", e.to_string());
-                return Err(BrokerError::PublishingError("Message could not be sent to broker".to_string()));
-            }
+                Ok(r) => {
+                    tracing::info!("Message sent successfully to broker.");
+                    r
+                },
+                Err(e) => {
+                    tracing::error!("Message could not be sent to broker: {}", e.to_string());
+                    return Err(BrokerError::PublishingError("Message could not be sent to broker".to_string()));
+                }
         };
 
         let _con = match publisher_confirm
             .await {
-            Ok(r) => r,
-            Err(e) => {
-                tracing::error!("Did not receive confirmation from broker: {}", e.to_string());
-                return Err(BrokerError::ConfirmationError("Did not receive confirmation from broker".to_string()));
-            }
+                Ok(r) => r,
+                Err(e) => {
+                    tracing::error!("Did not receive confirmation from broker: {}", e.to_string());
+                    return Err(BrokerError::ConfirmationError("Did not receive confirmation from broker".to_string()));
+                }
         };
 
         Ok(())

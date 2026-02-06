@@ -19,6 +19,7 @@ use crate::org::unibl::etf::middlewares::conditional_blocker_middleware::Conditi
 use crate::org::unibl::etf::middlewares::json_500_middleware::Json500Middleware;
 use crate::org::unibl::etf::model::responses::health_check_response::HealthCheckResponse;
 use crate::org::unibl::etf::publishers::user_publisher::UserPublisher;
+use crate::org::unibl::etf::repositories::refresh_token_repository::RefreshTokenRepository;
 use crate::org::unibl::etf::repositories::user_identity_repository::UserIdentityRepository;
 use crate::org::unibl::etf::services::auth_service::AuthService;
 use crate::org::unibl::etf::services::jwt_service::JwtService;
@@ -46,7 +47,8 @@ pub fn run(
     broker_pool: Arc<ChannelPool>
 ) -> std::io::Result<Server> {
     let jwt_service = JwtService::new(jwt_private_key, jwt_public_key, configuration.jwt.clone());
-    let user_identity_repository = UserIdentityRepository::new_with_db_pool(db_pool);
+    let user_identity_repository = UserIdentityRepository::new_with_db_pool(db_pool.clone());
+    let refresh_token_repository = RefreshTokenRepository::new_with_db_pool(db_pool.clone());
     let user_publisher = UserPublisher {
         broker_pool
     };
@@ -56,6 +58,7 @@ pub fn run(
             jwt_service,
             user_identity_repository,
             user_publisher,
+            refresh_token_repository
         }
     );
 

@@ -8,8 +8,7 @@ import toast from 'react-hot-toast';
 import { TemperatureToggle } from './TemperatureToggle.tsx';
 import type { UserPreferencesWithHistory } from '../model/UserPreferencesWithLocationHistory.ts';
 import type { RegistrationResponse } from '../model/responses/RegistrationResponse.ts';
-import { authApi } from '../api/client.ts';
-import type { ApiError } from '../model/errors/ApiError.ts';
+
 
 type TopBarProps = {
   user_info?: UserInfo | null;

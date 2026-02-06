@@ -28,15 +28,21 @@ impl JwtService {
         }
     }
 
-    #[tracing::instrument(name = "Jwt service - generate token function", skip(
-
-    ))]
-    pub fn generate_token(&self, user_id: &str, user_type: UserType, token_type: TokenType) -> Result<String, jsonwebtoken::errors::Error> {
+    #[tracing::instrument(
+        name = "Jwt service - generate token function",
+        skip()
+    )]
+    pub fn generate_token(
+        &self,
+        user_id: &str,
+        user_type: UserType,
+        token_type: TokenType
+    ) -> Result<String, jsonwebtoken::errors::Error> {
         let now = Utc::now();
 
         let exp = match token_type {
-            TokenType::ACCESS => (now + Duration::minutes(1)).timestamp(),
-            TokenType::REFRESH => (now + Duration::days(30)).timestamp(),
+            TokenType::ACCESS => (now + Duration::seconds(3)).timestamp(), //promijeniti kasnije !!!
+            TokenType::REFRESH => (now + Duration::minutes(1)).timestamp(),
         };
 
         let claims = Claims {
@@ -44,7 +50,7 @@ impl JwtService {
             user_type,
             typ: token_type,
             iat: now.timestamp() as usize,
-            exp: exp as usize, // Valid for 10mins
+            exp: exp as usize,
             iss: self.jwt_settings.issuer_name.clone(),
         };
 

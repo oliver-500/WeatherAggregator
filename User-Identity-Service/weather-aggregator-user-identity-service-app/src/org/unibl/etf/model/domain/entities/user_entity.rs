@@ -1,7 +1,6 @@
 
 use secrecy::{ExposeSecret, };
 use uuid::Uuid;
-use crate::org::unibl::etf::model::domain::entities::user_entity::refresh_token::RefreshToken;
 use crate::org::unibl::etf::model::domain::entities::user_entity::user_email::UserEmail;
 use crate::org::unibl::etf::model::domain::entities::user_entity::user_password::{UserPassword};
 use crate::org::unibl::etf::model::domain::errors::user_error::UserError;
@@ -19,7 +18,7 @@ pub struct UserEntity {
     pub email: Option<UserEmail>,
     pub user_type: UserType,
     pub is_locked: bool,
-    pub refresh_token_hash: Option<RefreshToken>,
+
 }
 
 
@@ -37,7 +36,6 @@ impl TryFrom<&RegisterStandardUserRequest> for UserEntity {
             password_hash: Some(user_password),
             user_type: UserType::STANDARD,
             is_locked: false,
-            refresh_token_hash: None,
         })
     }
 }

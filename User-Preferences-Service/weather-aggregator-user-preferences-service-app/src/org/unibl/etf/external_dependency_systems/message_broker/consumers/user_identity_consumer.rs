@@ -164,25 +164,25 @@ impl MessageConsumer for UserIdentityConsumer {
                         }
                     }
 
-                    let user_preferences_entity = UserPreferencesEntity {
-                        user_id: event.new_id,
-                        user_type: Some(event.user_type),
-                        unit_system: UnitSystemType::METRIC,
-                        favorite_location_name: None,
-                        favorite_lat: None,
-                        favorite_lon: None,
-                        updated_at: Default::default(),
-                    };
-
-                    match self.user_preferences_repository.save(&user_preferences_entity)
-                        .await {
-                        Ok(_) => {
-                            tracing::info!("Successfully saved user preferences for anonymous user.");
-                        },
-                        Err(e) => {
-                            tracing::error!("Error saving user preferences entity: {:?}", e.to_string());
-                        }
-                    }
+                    // let user_preferences_entity = UserPreferencesEntity {
+                    //     user_id: event.new_id,
+                    //     user_type: Some(event.user_type),
+                    //     unit_system: UnitSystemType::METRIC,
+                    //     favorite_location_name: None,
+                    //     favorite_lat: None,
+                    //     favorite_lon: None,
+                    //     updated_at: Default::default(),
+                    // };
+                    //
+                    // match self.user_preferences_repository.save(&user_preferences_entity)
+                    //     .await {
+                    //     Ok(_) => {
+                    //         tracing::info!("Successfully saved user preferences for anonymous user.");
+                    //     },
+                    //     Err(e) => {
+                    //         tracing::error!("Error saving user preferences entity: {:?}", e.to_string());
+                    //     }
+                    // }
                 },
                 _ => tracing::warn!("Received unknown routing key: {}", delivery.routing_key),
             }
