@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import './App.css'
 import Home from './pages/Home';
 import type { UserPreferencesWithHistory } from './model/UserPreferencesWithLocationHistory';
@@ -15,10 +15,10 @@ function App() {
   const [userPreferencesWithHistory, setUserPreferencesWithHistory] = useState<UserPreferencesWithHistory | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
 
-  useEffect(() => {
-    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-    const initialize = async () => {
+  const initializeUserRelatedInfo = useCallback(async (isReinitialization: boolean) => {
+      const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
       let success = false;
       let retryDelay = 500; // Start with 2 seconds
       const MAX_DELAY = 30000; // Cap the delay at 30 seconds
@@ -28,53 +28,64 @@ function App() {
           // 1. Core Goal: Get the info
           let info;
 
-          if (!userInfo) {
+          if (isReinitialization || !userInfo) {
             info = await getUserInfo();
           } else {
             info = userInfo;
-          }
-
-          
+          }        
           setUserInfo(info);
 
           // 2. Secondary Goal: Get preferences
           if (info?.user_id) {
             try {
-              const prefs = await getUserPreferencesWithHistory({ user_id: info.user_id });
+              console.log("Fetching user preferences...");
+              const prefs = await getUserPreferencesWithHistory(
+                { 
+                  user_id: info.user_id 
+                }
+              );
               setUserPreferencesWithHistory(prefs);
+
               success = true; // <--- This breaks the loop
               toast.success("Connected!");
             } catch (prefErr) {
-              // If prefs fail but info succeeded, we might still consider this "success"
-              // depending on your requirements.
-              console.error("Prefs failed, but continuing...", prefErr);
+              throw prefErr;
             }
           }
-
-         
 
         } catch (err: any) {
           const status = err.status;
 
+          //u slucaju da user sa id-om u cookie-u ne postoji
           if (status === 409) {
             await logoutUser();
-            setUserInfo(null)
+            setUserInfo(null);
+            setUserPreferencesWithHistory(null);
             await registerAnonymousUser();
           }
 
           // Handle specific logic-based errors first
-          if (status === 404 || status === 400) {
+          if (status === 400) {
             await registerAnonymousUser();
             // Don't set success to true; loop will run again naturally
           } else if (status === 401) {
             try {
-              await refreshAccessToken();
-            } catch {
-              toast.error("Session expired. Please log in again.");
+              try {
+                if(isReinitialization) {
+                  await registerAnonymousUser();
+                }
+              }
+              catch(err) {
+                continue;
+              }       
+              if(!isReinitialization) await refreshAccessToken();          
+              
+            } catch(err) {           
+              toast.error("Session expired. Log in again.");
               await logoutUser();
               setUserInfo(null);
-              
-              return; // Stop looping if user MUST take manual action
+              setUserPreferencesWithHistory(null);
+              await registerAnonymousUser();        
             }
           } else {
             // This is where the "Server Down" logic lives
@@ -87,8 +98,12 @@ function App() {
           }
         }
       }
-    };
-    initialize();
+    }, []); // Empty array means "only create this once"
+
+ 
+
+  useEffect(() => {
+    initializeUserRelatedInfo(false);
   }, []);
 
   
@@ -134,16 +149,25 @@ function App() {
         unit_system: prefs!.preferences.unit_system || "METRIC" // Default to METRIC if undefined,
       };
       await updateUserPreferencesWithHistory(req);
-
+      console.log("12");
     } catch (err) {
+      console.log("1");
       toast.error("Failed to sync preferences to cloud.");
+      throw err;
     }
   };
 
   return (
     <div style={styles.app}>
       <Toaster position="bottom-center" reverseOrder={false} />
-      <TopBar user_info={userInfo} userPreferencesWithHistory={userPreferencesWithHistory} onUnitChange={handleUnitChange} setUserInfo={setUserInfo}/>
+      <TopBar
+      user_info={userInfo} 
+      userPreferencesWithHistory={userPreferencesWithHistory} 
+      onUnitChange={handleUnitChange} 
+      setUserInfo={setUserInfo}
+      setUserPreferencesWithHistory={setUserPreferencesWithHistory}
+      initializeUserRelatedInfo={initializeUserRelatedInfo}
+      />
       <Home userPreferencesWithHistory={userPreferencesWithHistory} syncUserPreferences={syncUserPreferences} />   
     </div>
   )

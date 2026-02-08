@@ -41,9 +41,8 @@ userApi.interceptors.response.use(
         console.log("Attempting to refresh access token...");
         await refreshAccessToken(); 
         return userApi(originalRequest); // Retry the original request
-      } catch (refreshError) {
+      } catch (err: any) {
         // Refresh token also failed/expired -> Force Login
-        console.log("lol")
         await logoutUser();
       }
     }
@@ -51,7 +50,6 @@ userApi.interceptors.response.use(
     // SCENARIO 2: Token Missing (or 401 where refresh failed)
     if (error.response?.status === 401) {
        // Prompt user for login or redirect
-       alert("Session expired. Please log in.");
        await logoutUser();
     }
 

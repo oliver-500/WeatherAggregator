@@ -1,3 +1,4 @@
+
 use std::str::FromStr;
 use secrecy::{ExposeSecret, SecretString};
 use tracing::{Instrument, Span};
@@ -104,7 +105,7 @@ impl AuthService {
 
     #[tracing::instrument(
         name = "Auth service - refresh access token function",
-        skip(self)
+        skip(self, refresh_token, access_token)
     )]
     pub async fn refresh_access_token(
         &self,
@@ -169,6 +170,26 @@ impl AuthService {
             }
         };
 
+        match self.jwt_service
+            .validate_token(
+                refresh_token
+            ) {
+            Ok(_claims) => {
+                tracing::info!("Refresh token is valid.");
+            },
+            Err(_error) => {
+
+                if claims.user_type == UserType::STANDARD {
+                    tracing::error!("Refresh token has expired. Prompting standard user to log in again.");
+                    return Err(UserIdentityServiceError::ExpiredRefreshTokenError(Some("Refresh token has expired. Log in again.".to_string())))
+                }
+                else {
+                    tracing::info!("User is a guest user. Ignoring expired refresh token.");
+                }
+
+            }
+        };
+
         for refresh_token_hash in refresh_tokens {
             if RefreshToken::verify_token(refresh_token, refresh_token_hash.hashed_value.0.expose_secret()) {
                 if refresh_token_hash.is_revoked {
@@ -179,8 +200,8 @@ impl AuthService {
             };
         }
 
-        let access_token = self.jwt_service.
-            generate_token(
+        let access_token = self.jwt_service
+            .generate_token(
                 &claims.sub.to_string(),
                 claims.user_type.clone(),
                 TokenType::ACCESS

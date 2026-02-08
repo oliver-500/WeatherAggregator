@@ -15,6 +15,8 @@ type TopBarProps = {
   onUnitChange: (newSystem: "METRIC" | "IMPERIAL") => void;
   userPreferencesWithHistory?: UserPreferencesWithHistory | null;
   setUserInfo: (userInfo: UserInfo | null) => void;
+  setUserPreferencesWithHistory(userPreferencesWithHistory: UserPreferencesWithHistory | null): void;
+  initializeUserRelatedInfo(isReinitialization: boolean): Promise<void>;
 };
 
 export default function TopBar(
@@ -22,7 +24,9 @@ export default function TopBar(
     user_info, 
     onUnitChange,
     userPreferencesWithHistory,
-    setUserInfo
+    setUserInfo,
+    setUserPreferencesWithHistory,
+    initializeUserRelatedInfo
   }: TopBarProps) {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -37,8 +41,7 @@ export default function TopBar(
   const [formData, setFormData] = useState(initialState);
   const [isSending, setIsSending] = useState(false);
 
-  const isButtonEnabled =
-  authMode === 'login' ? 
+  const isButtonEnabled = authMode === 'login' ? 
     (formData.email.length > 0 && formData.password.length > 0 && !isSending) :
     (formData.email.length > 0 && formData.password.length > 0 && formData.confirmPassword.length > 0 && !isSending);
 
@@ -100,6 +103,7 @@ export default function TopBar(
 
         setIsModalOpen(false);
         toast.success("Registration successful.");
+        await initializeUserRelatedInfo(true);
         setAuthMode('login'); // Switch to login after successful registration
       } catch (err: any) {
         const statusCode = err.response?.status;
@@ -121,11 +125,12 @@ export default function TopBar(
       };
       try {
         await loginUser(requestData);
-        let res = await getUserInfo();
-        setUserInfo(res);
+//let res = await getUserInfo();
+     //   setUserInfo(res);
         setIsModalOpen(false);
         setIsSending(false);
         toast.success("Login successfull.");
+        await initializeUserRelatedInfo(true);
         return;
       } catch (err: any) {
         
@@ -145,8 +150,10 @@ export default function TopBar(
   const logoutUser = async () => {
     try {
       await logoutUserAuth();
-      setUserInfo(null)
-      toast.success("Logout successfull.")
+      setUserInfo(null);
+      setUserPreferencesWithHistory(null);
+      toast.success("Logout successfull.");
+      await initializeUserRelatedInfo(true)
     } catch (err) {
       toast.error("Logout failed. Please try again.");
     }

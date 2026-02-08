@@ -10,7 +10,7 @@ export const getUserPreferencesWithHistory = async (req: GetUserPreferencesReque
       console.log(response.data);
       return response.data;
     } catch (error) {
-      console.error("Microservice is grumpy today:", error);
+      throw error;
     }
 };
 
@@ -19,7 +19,7 @@ export const updateUserPreferencesWithHistory = async (req: UpdateUserPreference
     try {
       await userApi.put('/preferences', req);
     } catch (error) {
-      console.error("Microservice is grumpy today:", error);
+      throw error;
     }
 };
 

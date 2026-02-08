@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import  { getWeatherDataByCoordinates, getWeatherDataByIpAddress }  from '../api/weather';
 
 import 'leaflet/dist/leaflet.css';
@@ -34,17 +34,22 @@ export default function Home({
     normalize(current.location.lat) === normalize(userPreferencesWithHistory.preferences.favorite_lat) &&
     normalize(current.location.lon) === normalize(userPreferencesWithHistory.preferences.favorite_lon);
 
-  useEffect(() => {
-    getWeatherDataByIpAddress().then((res) => {
-      setCurrent(res);
-    });
-  }, []);
+  // useEffect(() => {
+  //   getWeatherDataByIpAddress().then((res) => {
+  //     setCurrent(res);
+  //   });
+  // }, []);
 
 
   useEffect(() => {
     if (!userPreferencesWithHistory) {
       return;
     }
+    setFavorite(null);
+    getWeatherDataByIpAddress().then((res) => {
+      setCurrent(res);
+     });
+    console.log("idemo");
 
     const loadFavoriteData = async () => {
       if (userPreferencesWithHistory.preferences.favorite_lat && userPreferencesWithHistory.preferences.favorite_lon) {
@@ -75,16 +80,11 @@ export default function Home({
      
       console.log(resolvedHistory.length, " ", historyItems.length);
       const processedHistory = resolvedHistory.map(data => {
-        console.log("op");
-        console.log(normalize(data.location.lat) === normalize(prefData.favorite_lat || 0) &&
-          normalize(data.location.lon) === normalize(prefData.favorite_lon || 0) &&
-          data.location.name === (prefData.favorite_location_name));
         return ({
         ...data,
         isFavorite: (
           normalize(data.location.lat) === normalize(prefData.favorite_lat || 0) &&
-          normalize(data.location.lon) === normalize(prefData.favorite_lon || 0) &&
-          data.location.name === (prefData.favorite_location_name)
+          normalize(data.location.lon) === normalize(prefData.favorite_lon || 0)
         )
       });
     });
@@ -106,25 +106,19 @@ export default function Home({
     loadAllData();
   }, [userPreferencesWithHistory]);
 
-  const hasAddedCurrentRef = useRef(false);
+
 
   useEffect(() => {
     if (!userPreferencesWithHistory || !current) return;
-    if (hasAddedCurrentRef.current) return;
-
-    // 3. Check existing history (standard check)
-    console.log(userPreferencesWithHistory.history.length, " z ");
+    console.log("idemo 2");
     const isCurrentAlreadyInHistory = userPreferencesWithHistory.history.some(item => {
       return normalize(item.lat) === normalize(current.location.lat) &&
-      normalize(item.lon) === normalize(current.location.lon) &&
-      item.location_name === current.location.name
+      normalize(item.lon) === normalize(current.location.lon)
     });
 
     if (isCurrentAlreadyInHistory) {
       return;
     }
-
-    hasAddedCurrentRef.current = true;
 
     // 5. Update State and Backend
     setHistory(prev => [...prev, { ...current, isFavorite: false }]);
