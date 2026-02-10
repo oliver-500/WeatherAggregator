@@ -8,19 +8,25 @@ import MapView from '../components/MapView';
 import type { CurrentWeather } from '../model/CurrentWeather';
 import { addHistoryItem } from '../api/user';
 import type { UserPreferencesWithHistory } from '../model/UserPreferencesWithLocationHistory';
+import type { LocationOption } from '../model/LocationOption';
 
 
 type HomeProps = {
   userPreferencesWithHistory: UserPreferencesWithHistory | null;
   syncUserPreferences: (prefs: UserPreferencesWithHistory | null) => void;
+  currentSelectedLocationOption: LocationOption | null;
+  setCurrentSelectedLocationOption: (locationOption: LocationOption) => void;
 };
 
 export default function Home({ 
   userPreferencesWithHistory, 
-  syncUserPreferences 
+  syncUserPreferences,
+  currentSelectedLocationOption,
+  setCurrentSelectedLocationOption
 }: HomeProps) {
 
   const [current, setCurrent] = useState<CurrentWeather | null>(null);
+  const [isCurrentLoaded, setIsCurrentLoaded] = useState<boolean>(false);
   const [history, setHistory] =  useState<CurrentWeather[]>([]);
   const [favorite, setFavorite] =  useState<CurrentWeather|null>(null);
 
@@ -34,11 +40,6 @@ export default function Home({
     normalize(current.location.lat) === normalize(userPreferencesWithHistory.preferences.favorite_lat) &&
     normalize(current.location.lon) === normalize(userPreferencesWithHistory.preferences.favorite_lon);
 
-  // useEffect(() => {
-  //   getWeatherDataByIpAddress().then((res) => {
-  //     setCurrent(res);
-  //   });
-  // }, []);
 
 
   useEffect(() => {
@@ -46,10 +47,40 @@ export default function Home({
       return;
     }
     setFavorite(null);
-    getWeatherDataByIpAddress().then((res) => {
+
+    const fetchCurrentData = async () => {
+      try {
+      const res = await getWeatherDataByIpAddress();
       setCurrent(res);
-     });
-    console.log("idemo");
+
+      setCurrentSelectedLocationOption({
+        current_weather: res,
+        location_name: res.location.name,
+        state: res.location.state_region_province_or_entity,
+        country: res.location.country,
+        lat: res.location.lat,
+        lon: res.location.lon
+      })
+
+      console.log("Success!");
+    } catch (err: any) {
+      console.error("Failed to fetch weather", err);
+    } finally {
+      // This block runs regardless of success or failure
+      
+      setIsCurrentLoaded(true);
+      
+      console.log("Call ended, cleaning up...");
+      // DO SOMETHING HERE
+      }
+    };
+    
+
+    fetchCurrentData();
+
+  
+
+    
 
     const loadFavoriteData = async () => {
       if (userPreferencesWithHistory.preferences.favorite_lat && userPreferencesWithHistory.preferences.favorite_lon) {
@@ -184,6 +215,7 @@ function handleStarClick(entry: CurrentWeather) {
        ) {
          item.isFavorite = true;
        }
+       else item.isFavorite = false;
       });
 
 
@@ -221,13 +253,20 @@ function handleStarClick(entry: CurrentWeather) {
 
   return (
     <div style={styles.main_home}>
-      <MapView />
+      <MapView 
+      current={current} 
+      userPreferencesWithHistory={userPreferencesWithHistory} 
+      isCurrentLoaded={isCurrentLoaded} 
+      currentSelectedLocationOption={currentSelectedLocationOption}
+      setCurrentSelectedLocationOption={setCurrentSelectedLocationOption}
+      />
       <SidePanel       
         current={current ? { ...current, isFavorite: !!isCurrentFav } : null}
         userPreferencesWithHistory={userPreferencesWithHistory}
         onStarClick={handleStarClick}
         favorite={favorite}
         history={history}
+        setCurrentSelectedLocationOption={setCurrentSelectedLocationOption}
       />  
     </div> 
   );

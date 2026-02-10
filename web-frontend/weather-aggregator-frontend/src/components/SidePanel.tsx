@@ -4,6 +4,7 @@ import HistoryLocations from "./side_panel/HistoryLocations";
 
 import type { CurrentWeather } from "../model/CurrentWeather";
 import type { UserPreferencesWithHistory } from "../model/UserPreferencesWithLocationHistory";
+import type { LocationOption } from "../model/LocationOption";
 
 type Props = {
   current: CurrentWeather | null;
@@ -11,6 +12,7 @@ type Props = {
   userPreferencesWithHistory?: UserPreferencesWithHistory | null;
   favorite: CurrentWeather | null;
   history: CurrentWeather[];
+  setCurrentSelectedLocationOption: (entry: LocationOption) => void;
 
 };
 
@@ -20,6 +22,7 @@ export default function SidePanel({
   onStarClick: handleStarClick,
   favorite: favorite,
   history: history,
+  setCurrentSelectedLocationOption
 
 }: Props) {
 

@@ -10,11 +10,13 @@ import type { UserInfo } from './model/UserInfo';
 import toast from 'react-hot-toast';
 import type { UpdateUserPreferencesRequest } from './model/requests/UpdateUserPreferencesRequest';
 
+import type { LocationOption } from './model/LocationOption';
+
 
 function App() {
   const [userPreferencesWithHistory, setUserPreferencesWithHistory] = useState<UserPreferencesWithHistory | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-
+  const [currentSelectedLocationOption, setCurrentSelectedLocationOption] = useState<LocationOption | null>(null);
 
   const initializeUserRelatedInfo = useCallback(async (isReinitialization: boolean) => {
       const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -61,17 +63,22 @@ function App() {
             await logoutUser();
             setUserInfo(null);
             setUserPreferencesWithHistory(null);
+            alert("1");
             await registerAnonymousUser();
+            await sleep(retryDelay);
           }
 
           // Handle specific logic-based errors first
           if (status === 400) {
+            alert("2");
             await registerAnonymousUser();
+            await sleep(retryDelay);
             // Don't set success to true; loop will run again naturally
           } else if (status === 401) {
             try {
               try {
                 if(isReinitialization) {
+                  alert("3");
                   await registerAnonymousUser();
                 }
               }
@@ -85,7 +92,9 @@ function App() {
               await logoutUser();
               setUserInfo(null);
               setUserPreferencesWithHistory(null);
-              await registerAnonymousUser();        
+              alert("4");
+              await registerAnonymousUser();    
+              await sleep(retryDelay);    
             }
           } else {
             // This is where the "Server Down" logic lives
@@ -167,8 +176,14 @@ function App() {
       setUserInfo={setUserInfo}
       setUserPreferencesWithHistory={setUserPreferencesWithHistory}
       initializeUserRelatedInfo={initializeUserRelatedInfo}
+      setCurrentSelectedLocationOption={setCurrentSelectedLocationOption} 
       />
-      <Home userPreferencesWithHistory={userPreferencesWithHistory} syncUserPreferences={syncUserPreferences} />   
+      <Home 
+      userPreferencesWithHistory={userPreferencesWithHistory} 
+      syncUserPreferences={syncUserPreferences}
+      currentSelectedLocationOption={currentSelectedLocationOption}
+      setCurrentSelectedLocationOption={setCurrentSelectedLocationOption} 
+      />   
     </div>
   )
 }

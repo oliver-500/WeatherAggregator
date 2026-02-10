@@ -169,7 +169,7 @@ fn build_cookie_with_token(token: String, cookie_name: &str) -> cookie::Cookie<'
     Cookie::build(cookie_name.to_owned(), token)
         .path("/")
         .http_only(true)    // Prevents JS access (XSS protection)
-        .secure(true)
+        .secure(false)
         .max_age(Duration::days(400))// Ensures cookie is sent over HTTPS only
         .same_site(cookie::SameSite::Strict)
         .finish()
@@ -179,7 +179,7 @@ pub fn build_logout_cookie(cookie_name: &str) -> Cookie<'static> {
     Cookie::build(cookie_name.to_owned(), "")
         .path("/")
         .http_only(true)
-        .secure(true)
+        .secure(false)
         // Setting Max-Age to 0 tells the browser to delete it immediately
         .max_age(Duration::ZERO)
         // Setting an expiration in the past is a fallback for older browsers

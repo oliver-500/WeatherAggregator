@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { registerUser, loginUser, logoutUser as logoutUserAuth, getUserInfo } from '../api/auth';
+import { registerUser, loginUser, logoutUser as logoutUserAuth } from '../api/auth';
 import isEmail from 'validator/lib/isEmail';
 import type { UserInfo } from '../model/UserInfo';
 import type { RegisterUserRequest } from '../model/requests/RegisterUserRequest';
@@ -9,6 +9,9 @@ import { TemperatureToggle } from './TemperatureToggle.tsx';
 import type { UserPreferencesWithHistory } from '../model/UserPreferencesWithLocationHistory.ts';
 import type { RegistrationResponse } from '../model/responses/RegistrationResponse.ts';
 
+import { TextField, Autocomplete } from '@mui/material';
+import { getWeatherDataByCityName } from '../api/weather.ts';
+import type { LocationOption } from '../model/LocationOption.ts';
 
 type TopBarProps = {
   user_info?: UserInfo | null;
@@ -17,6 +20,7 @@ type TopBarProps = {
   setUserInfo: (userInfo: UserInfo | null) => void;
   setUserPreferencesWithHistory(userPreferencesWithHistory: UserPreferencesWithHistory | null): void;
   initializeUserRelatedInfo(isReinitialization: boolean): Promise<void>;
+  setCurrentSelectedLocationOption: (locationOption: LocationOption) => void;
 };
 
 export default function TopBar(
@@ -26,11 +30,49 @@ export default function TopBar(
     userPreferencesWithHistory,
     setUserInfo,
     setUserPreferencesWithHistory,
-    initializeUserRelatedInfo
+    initializeUserRelatedInfo,
+    setCurrentSelectedLocationOption
   }: TopBarProps) {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+
+  const [inputValue, setInputValue] = useState(''); // What the user types
+  const [options, setOptions] = useState<LocationOption[]>([]);     // Results from your API
+  const [open, setOpen] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+
+
+  const handleSearch = async () => {
+    if (!inputValue) return;
+    
+    if(isSearching) return;
+    setIsSearching(true);
+
+    // 1. Fetch data from your API (using your apiClient with the interceptor)
+    // const results = await apiClient.get(`/locations?search=${inputValue}`);
+    //const mockResults = ['New York City', 'New York State', 'Newark']; // Example
+    
+
+    try {
+      let res = await getWeatherDataByCityName(inputValue);
+      if (res.length == 0) {
+        toast.error("No locations found. Try a different spelling.")
+      }
+      else if (res.length == 1) {
+        setCurrentSelectedLocationOption(res[0]);
+        toast.success(res[0].current_weather?.weather.temp_metric + "");
+      }
+      else {
+        setOptions(res);
+        setOpen(true); // 2. Only show the suggestions AFTER the search is triggered
+      }
+    
+    } catch (error: any) {
+    }
+    setIsSearching(false);
+  
+  };
  
   const initialState = {
     email: 'pera@gmail.com',
@@ -162,11 +204,62 @@ export default function TopBar(
   return (
     <>
     <header style={styles.container}>
-      <input
-        type="text"
-        placeholder="Search by location name..."
+     
+  
+      <Autocomplete
+        onBlur={() => {
+        // This ensures the value stays in the box even when focus is lost
+          setInputValue(inputValue); 
+        }}
+
+        getOptionLabel={(option) => 
+          `${option.location_name}, ${option.country}, ${option.state}`
+        }
+       
+        open={open}
+        onOpen={() => { if (options.length > 0) setOpen(true); }}
+        onClose={() => setOpen(false)}
+        options={options}
+        // This is the "Do Something" when they click a result:
+        onChange={(event, newValue) => {
+          console.log("User selected:", newValue);
+          // Trigger your final action here
+        }}
         style={styles.search}
+        inputValue={inputValue}
+        onInputChange={(event, newInputValue, reason) => {
+          if (reason === 'input') {
+            setInputValue(newInputValue);
+          } else if (reason === 'reset') {
+            // If the reason is 'reset' and we have a value, don't clear it
+            if (newInputValue === '') return; 
+            setInputValue(newInputValue);
+          }
+        }}
+        renderInput={(params) => (
+          <TextField {...params} 
+          label="Location Name" 
+          variant="outlined" 
+          size="small" 
+          
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              handleSearch();
+            }
+          }}
+
+          />
+        )}
       />
+      
+      <button onClick={handleSearch} style={{
+              ...styles.button,
+              ...( isSearching ? styles.buttonDisabled : {} )
+              }}  disabled={isSearching}>
+        Search
+      </button>
+ 
+
       <div style={styles.right}>
         {user_info?.email ? (   
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
