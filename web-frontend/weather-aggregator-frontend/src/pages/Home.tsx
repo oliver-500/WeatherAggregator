@@ -16,18 +16,22 @@ type HomeProps = {
   syncUserPreferences: (prefs: UserPreferencesWithHistory | null) => void;
   currentSelectedLocationOption: LocationOption | null;
   setCurrentSelectedLocationOption : React.Dispatch<React.SetStateAction<LocationOption | null>>
+  locationHistory: CurrentWeather[];
+  setLocationHistory: React.Dispatch<React.SetStateAction<CurrentWeather[]>>
 };
 
 export default function Home({ 
   userPreferencesWithHistory, 
   syncUserPreferences,
   currentSelectedLocationOption,
-  setCurrentSelectedLocationOption
+  setCurrentSelectedLocationOption,
+  setLocationHistory,
+  locationHistory
 }: HomeProps) {
 
   const [current, setCurrent] = useState<CurrentWeather | null>(null);
   const [isCurrentLoaded, setIsCurrentLoaded] = useState<boolean>(false);
-  const [history, setHistory] =  useState<CurrentWeather[]>([]);
+  
   const [favorite, setFavorite] =  useState<CurrentWeather|null>(null);
 
   const normalize = (num: number) => num.toFixed(2);
@@ -42,11 +46,9 @@ export default function Home({
 
 
   useEffect(() => {
-    if(!userPreferencesWithHistory) {
+    if(!userPreferencesWithHistory || !currentSelectedLocationOption) {
       return 
     }
-
-    if (!currentSelectedLocationOption) return;
 
     if (currentSelectedLocationOption.lat !== null && currentSelectedLocationOption.lon !== null) {
       let lat = currentSelectedLocationOption.lat;
@@ -61,23 +63,23 @@ export default function Home({
       if (isNewLocationAlreadyInHistory) {
         return;
       }
-    
-      setHistory(prev => [
-        ...prev, 
-        { 
-          ...currentSelectedLocationOption.current_weather, 
-          isFavorite: false 
-        } as CurrentWeather // Tell TS: "Trust me, this is a CurrentWeather object"
-      ]);
           
       addHistoryItem({
         user_id: userPreferencesWithHistory.preferences.user_id,
         location_name: currentSelectedLocationOption.location_name || "Unknown Location",
         lat: lat,
         lon: lon,
+      }).then(() => {
+        console.log("uspjesno");
+        setLocationHistory(prev => [
+          ...prev, 
+          { 
+            ...currentSelectedLocationOption.current_weather, 
+            isFavorite: false 
+          } as CurrentWeather // Tell TS: "Trust me, this is a CurrentWeather object"
+        ]);
       });
     }
-
   }, [currentSelectedLocationOption])
 
   useEffect(() => {
@@ -88,37 +90,25 @@ export default function Home({
 
     const fetchCurrentData = async () => {
       try {
-      const res = await getWeatherDataByIpAddress();
-      setCurrent(res);
+        const res = await getWeatherDataByIpAddress();
+        setCurrent(res);
 
-      setCurrentSelectedLocationOption({
-        current_weather: res,
-        location_name: res.location.name,
-        state: res.location.state_region_province_or_entity,
-        country: res.location.country,
-        lat: res.location.lat,
-        lon: res.location.lon
-      })
-
-      console.log("Success!");
-    } catch (err: any) {
-      console.error("Failed to fetch weather", err);
-    } finally {
-      // This block runs regardless of success or failure
-      
-      setIsCurrentLoaded(true);
-      
-      console.log("Call ended, cleaning up...");
-      // DO SOMETHING HERE
+        setCurrentSelectedLocationOption({
+          current_weather: res,
+          location_name: res.location.name,
+          state: res.location.state_region_province_or_entity,
+          country: res.location.country,
+          lat: res.location.lat,
+          lon: res.location.lon
+        });
+      } catch (err: any) {
+        console.error("Failed to fetch weather", err);
+      } finally {    
+        setIsCurrentLoaded(true);
       }
     };
-    
 
     fetchCurrentData();
-
-  
-
-    
 
     const loadFavoriteData = async () => {
       if (userPreferencesWithHistory.preferences.favorite_lat && userPreferencesWithHistory.preferences.favorite_lon) {
@@ -136,31 +126,24 @@ export default function Home({
 
     const loadHistoryData = async () => {
       const historyItems = userPreferencesWithHistory.history;
-
-      // A. Fetch all history weather in parallel
       const historyPromises = historyItems.map(async item => 
         await getWeatherDataByCoordinates(item.lat, item.lon)
       );
-
       const resolvedHistory = await Promise.all(historyPromises);
 
       const prefData = userPreferencesWithHistory.preferences;
-
-     
-      console.log(resolvedHistory.length, " ", historyItems.length);
       const processedHistory = resolvedHistory.map(data => {
+        console.log(data.location.name)
         return ({
-        ...data,
-        isFavorite: (
-          normalize(data.location.lat) === normalize(prefData.favorite_lat || 0) &&
-          normalize(data.location.lon) === normalize(prefData.favorite_lon || 0)
-        )
+          ...data,
+          isFavorite: (
+            normalize(data.location.lat) === normalize(prefData.favorite_lat || 0) &&
+            normalize(data.location.lon) === normalize(prefData.favorite_lon || 0)
+          )
+        });
       });
-    });
-
-
-      console.log(processedHistory.length, " processed history length")
-      setHistory(processedHistory);
+      console.log("Processed history:", processedHistory);
+      setLocationHistory(processedHistory);
     };
 
     const loadAllData = async () => {
@@ -182,7 +165,7 @@ export default function Home({
   
     const isCurrentAlreadyInHistory = userPreferencesWithHistory.history.some(item => {
       return normalize(item.lat) === normalize(current.location.lat) &&
-      normalize(item.lon) === normalize(current.location.lon)
+        normalize(item.lon) === normalize(current.location.lon)
     });
 
     if (isCurrentAlreadyInHistory) {
@@ -190,14 +173,17 @@ export default function Home({
     }
 
     // 5. Update State and Backend
-    setHistory(prev => [...prev, { ...current, isFavorite: false }]);
+   
     
     addHistoryItem({
       user_id: userPreferencesWithHistory.preferences.user_id,
       location_name: current.location.name || "Unknown Location",
       lat: current.location.lat,
       lon: current.location.lon
-    });
+    }).then(() => {
+      console.log("uspjesno dodan item u historiju");
+       setLocationHistory(prev => [...prev, { ...current, isFavorite: false }]);
+    })
 
     // Note: history is removed from dependencies to prevent the loop
   }, [userPreferencesWithHistory, current]);
@@ -213,7 +199,7 @@ function handleStarClick(entry: CurrentWeather) {
      entry.isFavorite = false;
      setFavorite(null);
 
-     history.forEach(item => {
+     locationHistory.forEach(item => {
        if (
         item.location.name === entry.location.name &&
         normalize(item.location.lat) === normalize(entry.location.lat) &&
@@ -245,7 +231,7 @@ function handleStarClick(entry: CurrentWeather) {
     toast.success("Successfully set as favorite.");
     syncUserPreferences(userPreferencesWithHistory);
 
-    history.forEach(item => {
+    locationHistory.forEach(item => {
        if (
         item.location.name === entry.location.name &&
         normalize(item.location.lat) === normalize(entry.location.lat) &&
@@ -273,7 +259,7 @@ function handleStarClick(entry: CurrentWeather) {
       syncUserPreferences(userPreferencesWithHistory);
         entry.isFavorite = true;
 
-        history.forEach(item => {
+        locationHistory.forEach(item => {
        if (
         item.location.name === entry.location.name &&
         normalize(item.location.lat) === normalize(entry.location.lat) &&
@@ -303,7 +289,7 @@ function handleStarClick(entry: CurrentWeather) {
         userPreferencesWithHistory={userPreferencesWithHistory}
         onStarClick={handleStarClick}
         favorite={favorite}
-        history={history}
+        history={locationHistory}
         setCurrentSelectedLocationOption={setCurrentSelectedLocationOption}
       />  
     </div> 

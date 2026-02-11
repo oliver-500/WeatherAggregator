@@ -28,6 +28,7 @@ export default function WeatherEntry({
         </small>
         <div> <i style={{ fontSize: '13px' }}>{weather.weather.condition}</i></div>
       </div>
+      &nbsp;
 
       <div style={styles.right}>
         <span>{ userPreferencesWithHistory?.preferences.unit_system === "METRIC" ? weather.weather.temp_metric.toFixed(0) : weather.weather.temp_imperial.toFixed(0)}°</span>

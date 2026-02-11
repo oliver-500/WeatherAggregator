@@ -8,10 +8,10 @@ import toast from 'react-hot-toast';
 import { TemperatureToggle } from './TemperatureToggle.tsx';
 import type { UserPreferencesWithHistory } from '../model/UserPreferencesWithLocationHistory.ts';
 import type { RegistrationResponse } from '../model/responses/RegistrationResponse.ts';
-
 import { TextField, Autocomplete } from '@mui/material';
 import { getWeatherDataByCityName, getWeatherDataByCoordinates } from '../api/weather.ts';
 import type { LocationOption } from '../model/LocationOption.ts';
+import type { CurrentWeather } from '../model/CurrentWeather.ts';
 
 type TopBarProps = {
   user_info?: UserInfo | null;
@@ -21,7 +21,7 @@ type TopBarProps = {
   setUserPreferencesWithHistory(userPreferencesWithHistory: UserPreferencesWithHistory | null): void;
   initializeUserRelatedInfo(isReinitialization: boolean): Promise<void>;
   setCurrentSelectedLocationOption: (locationOption: LocationOption) => void;
- 
+  setLocationHistory: React.Dispatch<React.SetStateAction<CurrentWeather[]>>;
 };
 
 export default function TopBar({
@@ -32,6 +32,7 @@ export default function TopBar({
     setUserPreferencesWithHistory,
     initializeUserRelatedInfo,
     setCurrentSelectedLocationOption,
+    setLocationHistory
   }: TopBarProps) {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -41,7 +42,6 @@ export default function TopBar({
   const [options, setOptions] = useState<LocationOption[]>([]);     // Results from your API
   const [open, setOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-
 
   const handleSearch = async () => {
     if (!inputValue) return;
@@ -59,17 +59,15 @@ export default function TopBar({
         let result = res[0];
         let newInputValue = result.location_name + ", " + result.state + ", " + result.country;
         setInputValue(newInputValue)
-
       }
       else {
         setOptions(res);
         setOpen(true); // 2. Only show the suggestions AFTER the search is triggered
-      }
-    
+      } 
     } catch (error: any) {
     }
+    
     setIsSearching(false);
-  
   };
  
   const initialState = {
@@ -210,6 +208,7 @@ export default function TopBar({
       await logoutUserAuth();
       setUserInfo(null);
       setUserPreferencesWithHistory(null);
+      setLocationHistory([]);
       toast.success("Logout successfull.");
       await initializeUserRelatedInfo(true)
     } catch (err) {
@@ -224,7 +223,6 @@ export default function TopBar({
   
       <Autocomplete
         onBlur={() => {
-        // This ensures the value stays in the box even when focus is lost
           setInputValue(inputValue); 
         }}
 
@@ -236,15 +234,14 @@ export default function TopBar({
         onOpen={() => { if (options.length > 0) setOpen(true); }}
         onClose={() => setOpen(false)}
         options={options}
-        // This is the "Do Something" when they click a result:
-        onChange={(event, newValue) => {
+        onChange={(_event, newValue) => {
           console.log("User selected:", newValue);
           if (!newValue) return;
           getWeatherDataForSelectedLocationOption(newValue);
         }}
         style={styles.search}
         inputValue={inputValue}
-        onInputChange={(event, newInputValue, reason) => {
+        onInputChange={(_event, newInputValue, reason) => {
           if (reason === 'input') {
             setInputValue(newInputValue);
             if (!newInputValue) return;

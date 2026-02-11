@@ -28,6 +28,6 @@ export const addHistoryItem = async (req: AddHistoryItemRequest) => {
     try {
       await userApi.post('/history', req);
     } catch (error) {
-      console.error("Microservice is grumpy today:", error);
+      throw error;
     }   
   }

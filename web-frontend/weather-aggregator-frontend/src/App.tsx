@@ -11,12 +11,14 @@ import toast from 'react-hot-toast';
 import type { UpdateUserPreferencesRequest } from './model/requests/UpdateUserPreferencesRequest';
 
 import type { LocationOption } from './model/LocationOption';
+import type { CurrentWeather } from './model/CurrentWeather';
 
 
 function App() {
   const [userPreferencesWithHistory, setUserPreferencesWithHistory] = useState<UserPreferencesWithHistory | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [currentSelectedLocationOption, setCurrentSelectedLocationOption] = useState<LocationOption | null>(null);
+  const [locationHistory, setLocationHistory] =  useState<CurrentWeather[]>([]);
 
   const initializeUserRelatedInfo = useCallback(async (isReinitialization: boolean) => {
       const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -177,12 +179,15 @@ function App() {
       setUserPreferencesWithHistory={setUserPreferencesWithHistory}
       initializeUserRelatedInfo={initializeUserRelatedInfo}
       setCurrentSelectedLocationOption={setCurrentSelectedLocationOption} 
+      setLocationHistory={setLocationHistory}
       />
       <Home 
       userPreferencesWithHistory={userPreferencesWithHistory} 
       syncUserPreferences={syncUserPreferences}
       currentSelectedLocationOption={currentSelectedLocationOption}
-      setCurrentSelectedLocationOption={setCurrentSelectedLocationOption} 
+      setCurrentSelectedLocationOption={setCurrentSelectedLocationOption}
+      locationHistory={locationHistory}
+      setLocationHistory={setLocationHistory} 
       />   
     </div>
   )

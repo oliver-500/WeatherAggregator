@@ -96,7 +96,6 @@ const styles = {
   },
   weatherCardWrapper: {
     position: "relative",
-    cursor: "pointer",
     
     transition: "transform 0.2s ease",
     overflow: "hidden",
