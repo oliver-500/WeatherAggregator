@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, Marker, Popup, useMap, ZoomControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, ZoomControl, useMapEvents} from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -8,6 +8,7 @@ import type { UserPreferencesWithHistory } from '../model/UserPreferencesWithLoc
 import type { CurrentWeather } from '../model/CurrentWeather';
 import { useEffect } from 'react';
 import type { LocationOption } from '../model/LocationOption';
+import { getWeatherDataByCoordinates } from '../api/weather';
 
 
 
@@ -27,47 +28,49 @@ interface MapProps {
   setCurrentSelectedLocationOption: (entry: LocationOption) => void;
 }
 
+function MapClickHandler({ handleClick }: { handleClick: (lat: number, lon: number) => void }) {
+  useMapEvents({
+    click: (e) => {
+      const { lat, lng } = e.latlng;
+      handleClick(lat, lng);
+    },
+  });
+  return null; // This component doesn't render anything itself
+}
 
 export default function MapView({
   current,
   userPreferencesWithHistory,
   isCurrentLoaded,
   currentSelectedLocationOption,
-  setCurrentSelectedLocationOption
-} : MapProps
-  
-) {
-
+  setCurrentSelectedLocationOption,
+} : MapProps) {
   if (!isCurrentLoaded) {
     return <div style={styles.container}>Loading Map...</div>;
   }
 
-  const initialPosition: [number, number] = [current?.location.lat || 0, current?.location.lon || 0];
-
+  const initialPosition: [number, number] = [current?.location.lat || 45, current?.location.lon || 0];
 
   return (
     <div style={styles.container}>
-
-
-  <div style={styles.infoPanel} className="custom-scrollbar">
-        <h3 style={{ margin: 0 }}>{currentSelectedLocationOption?.current_weather?.location.name || ""}</h3>
+      {currentSelectedLocationOption !== null && (<div style={styles.infoPanel} className="custom-scrollbar">
+        <h3 style={{ margin: 0 }}>
+          {currentSelectedLocationOption?.current_weather?.location.name || ""}
+        </h3>
         <p style={{ fontSize: '0.8rem', color: '#666' }}>
           {currentSelectedLocationOption?.current_weather?.location.state_region_province_or_entity || ""},&nbsp; 
           {currentSelectedLocationOption?.current_weather?.location.country || ""}
-        </p>
-        
-        
-        
+        </p>    
         <div>
           <strong>Temperature: </strong> 
           {userPreferencesWithHistory?.preferences.unit_system === "IMPERIAL" 
-            ? `${currentSelectedLocationOption?.current_weather?.weather.temp_imperial ?? ""} °F`
-          : `${currentSelectedLocationOption?.current_weather?.weather.temp_metric ?? ""} °C`
+            ? `${currentSelectedLocationOption?.current_weather?.weather.temp_imperial.toFixed(0) ?? ""} °F`
+          : `${currentSelectedLocationOption?.current_weather?.weather.temp_metric.toFixed(0) ?? ""} °C`
           }
           <br />
           <small>Feels like: {userPreferencesWithHistory?.preferences.unit_system === "IMPERIAL" 
-            ? `${currentSelectedLocationOption?.current_weather?.weather.temp_feelslike_imperial ?? ""} °F`
-          : `${currentSelectedLocationOption?.current_weather?.weather.temp_feelslike_metric ?? ""} °C`
+            ? `${currentSelectedLocationOption?.current_weather?.weather.temp_feelslike_imperial?.toFixed(0) ?? ""} °F`
+          : `${currentSelectedLocationOption?.current_weather?.weather.temp_feelslike_metric?.toFixed(0) ?? ""} °C`
           }</small>
         </div>
 
@@ -89,28 +92,62 @@ export default function MapView({
         </div>
         
         {/* Add more info here; the panel will scroll if it gets too tall */}
-      </div>
+      </div>)}
 
       <MapContainer 
         center={initialPosition} 
-        zoom={12} 
+        zoom={currentSelectedLocationOption ? 12 : 4} 
         scrollWheelZoom={false} 
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
       >
         <ZoomControl position="bottomright" />
+
+        <MapClickHandler handleClick={(lat, lon) => {
+          getWeatherDataByCoordinates(lat, lon).then((res) => {
+            let newData = {
+              current_weather: res,
+              location_name: res.location.name,
+              state: res.location.state_region_province_or_entity,
+              country: res.location.country,
+              lat: res.location.lat,
+              lon: res.location.lon
+            };
+            setCurrentSelectedLocationOption(newData);
+          }      
+        );    
+        }} />
+
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <RecenterMap   lat={currentSelectedLocationOption?.current_weather?.location.lat || 0} lon={currentSelectedLocationOption?.current_weather?.location.lon || 0} />
-        <Marker position={[currentSelectedLocationOption?.current_weather?.location.lat || current?.location.lat || 0,
-        currentSelectedLocationOption?.current_weather?.location.lon || current?.location.lon || 0]}>
+        {currentSelectedLocationOption && <Marker position={
+            [currentSelectedLocationOption?.current_weather?.location.lat || current?.location.lat || 0,
+            currentSelectedLocationOption?.current_weather?.location.lon || current?.location.lon || 0]
+          }>
           <Popup>Selected Location</Popup>
         </Marker>
+}
       </MapContainer>
     </div>
   );
+}
+
+function RecenterMap({ lat, lon }: { lat: number; lon: number;}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (lat === 0 || lon === 0) {
+        return;
+    }
+    map.flyTo([lat, lon], map.getZoom(), {
+      duration: 1.5, // seconds
+    });
+  }, [lat, lon, map]);
+
+  return null;
 }
 
 const styles = {
@@ -141,19 +178,3 @@ const styles = {
   }
 } as const;
 
-function RecenterMap({ lat, lon }: { lat: number; lon: number;}) {
-  const map = useMap();
-
-  useEffect(() => {
-
-    if (lat === 0 || lon === 0) {
-        return;
-    }
-    // .setView moves the map. .flyTo adds a smooth animation.
-    map.flyTo([lat, lon], map.getZoom(), {
-      duration: 1.5, // seconds
-    });
-  }, [lat, lon, map]);
-
-  return null;
-}

@@ -1,4 +1,5 @@
 import type { CurrentWeather } from "../../model/CurrentWeather";
+import type { LocationOption } from "../../model/LocationOption";
 import type { UserPreferencesWithHistory } from "../../model/UserPreferencesWithLocationHistory";
 import WeatherEntry from "./WeatherEntry";
 
@@ -6,12 +7,14 @@ type Props = {
   onStarClick: (entry: CurrentWeather) => void;
   userPreferencesWithHistory?: UserPreferencesWithHistory | null;
   favorite: CurrentWeather | null;
+  setCurrentSelectedLocationOption : React.Dispatch<React.SetStateAction<LocationOption | null>>;
 };
 
 export default function FavoriteLocation({
     userPreferencesWithHistory,
     onStarClick,
-    favorite
+    favorite,
+    setCurrentSelectedLocationOption
 }: Props) {
 
   return (
@@ -22,6 +25,7 @@ export default function FavoriteLocation({
           weather={favorite}
           userPreferencesWithHistory={userPreferencesWithHistory}
           onStarClick={onStarClick}
+          setCurrentSelectedLocationOption={setCurrentSelectedLocationOption}
         />
       ) : (
         <div style={styles.errorMessage}>

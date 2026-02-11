@@ -12,7 +12,7 @@ type Props = {
   userPreferencesWithHistory?: UserPreferencesWithHistory | null;
   favorite: CurrentWeather | null;
   history: CurrentWeather[];
-  setCurrentSelectedLocationOption: (entry: LocationOption) => void;
+  setCurrentSelectedLocationOption : React.Dispatch<React.SetStateAction<LocationOption | null>>;
 
 };
 
@@ -33,17 +33,20 @@ export default function SidePanel({
         userPreferencesWithHistory={userPreferencesWithHistory}
         favorite={favorite}
         onStarClick={handleStarClick}
+        setCurrentSelectedLocationOption={setCurrentSelectedLocationOption}
       />
       <FavoriteLocation
         userPreferencesWithHistory={userPreferencesWithHistory}
         favorite={favorite}
         onStarClick={handleStarClick}
+        setCurrentSelectedLocationOption={setCurrentSelectedLocationOption}
       />
       <HistoryLocations
         userPreferencesWithHistory={userPreferencesWithHistory}
         favorite={favorite}
         history={history}
         onStarClick={handleStarClick}
+        setCurrentSelectedLocationOption={setCurrentSelectedLocationOption}
 
       />
     </aside>

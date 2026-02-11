@@ -10,7 +10,7 @@ import type { UserPreferencesWithHistory } from '../model/UserPreferencesWithLoc
 import type { RegistrationResponse } from '../model/responses/RegistrationResponse.ts';
 
 import { TextField, Autocomplete } from '@mui/material';
-import { getWeatherDataByCityName } from '../api/weather.ts';
+import { getWeatherDataByCityName, getWeatherDataByCoordinates } from '../api/weather.ts';
 import type { LocationOption } from '../model/LocationOption.ts';
 
 type TopBarProps = {
@@ -21,17 +21,17 @@ type TopBarProps = {
   setUserPreferencesWithHistory(userPreferencesWithHistory: UserPreferencesWithHistory | null): void;
   initializeUserRelatedInfo(isReinitialization: boolean): Promise<void>;
   setCurrentSelectedLocationOption: (locationOption: LocationOption) => void;
+ 
 };
 
-export default function TopBar(
-  {
+export default function TopBar({
     user_info, 
     onUnitChange,
     userPreferencesWithHistory,
     setUserInfo,
     setUserPreferencesWithHistory,
     initializeUserRelatedInfo,
-    setCurrentSelectedLocationOption
+    setCurrentSelectedLocationOption,
   }: TopBarProps) {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -49,11 +49,6 @@ export default function TopBar(
     if(isSearching) return;
     setIsSearching(true);
 
-    // 1. Fetch data from your API (using your apiClient with the interceptor)
-    // const results = await apiClient.get(`/locations?search=${inputValue}`);
-    //const mockResults = ['New York City', 'New York State', 'Newark']; // Example
-    
-
     try {
       let res = await getWeatherDataByCityName(inputValue);
       if (res.length == 0) {
@@ -61,7 +56,10 @@ export default function TopBar(
       }
       else if (res.length == 1) {
         setCurrentSelectedLocationOption(res[0]);
-        toast.success(res[0].current_weather?.weather.temp_metric + "");
+        let result = res[0];
+        let newInputValue = result.location_name + ", " + result.state + ", " + result.country;
+        setInputValue(newInputValue)
+
       }
       else {
         setOptions(res);
@@ -105,6 +103,26 @@ export default function TopBar(
     setAuthMode('login');
     setFormData(initialState); 
   };
+
+  const getWeatherDataForSelectedLocationOption = async (locationOption: LocationOption) => {
+   
+    console.log(locationOption.lat, locationOption.lon);
+    if (locationOption.lat && locationOption.lon) {
+      let result = await getWeatherDataByCoordinates(locationOption.lat, locationOption.lon);
+      console.log("op");
+
+      setCurrentSelectedLocationOption({
+        current_weather: result,
+        location_name: result.location.name,
+        state: result.state_region_province_or_entity,
+        country: result.location.country,
+        lat: result.location.lat,
+        lon: result.location.lon,
+      });
+      setOptions([]);
+    }
+   
+  }
 
   const handleSubmit = async () => {
     if (isSending) return; // Prevent multiple submissions
@@ -167,8 +185,6 @@ export default function TopBar(
       };
       try {
         await loginUser(requestData);
-//let res = await getUserInfo();
-     //   setUserInfo(res);
         setIsModalOpen(false);
         setIsSending(false);
         toast.success("Login successfull.");
@@ -223,13 +239,15 @@ export default function TopBar(
         // This is the "Do Something" when they click a result:
         onChange={(event, newValue) => {
           console.log("User selected:", newValue);
-          // Trigger your final action here
+          if (!newValue) return;
+          getWeatherDataForSelectedLocationOption(newValue);
         }}
         style={styles.search}
         inputValue={inputValue}
         onInputChange={(event, newInputValue, reason) => {
           if (reason === 'input') {
             setInputValue(newInputValue);
+            if (!newInputValue) return;
           } else if (reason === 'reset') {
             // If the reason is 'reset' and we have a value, don't clear it
             if (newInputValue === '') return; 

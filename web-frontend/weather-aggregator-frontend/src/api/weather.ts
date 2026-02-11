@@ -38,11 +38,11 @@ export const getWeatherDataByCityName = async (locationName: string) => {
     let locations = [] as LocationOption[];
     locations.push({
       current_weather: response.data,
-      location_name: null,
-      state: null,
-      country: null,
-      lat: null,
-      lon: null,
+      location_name: response.data.location.name,
+      state: response.data.location.state_region_province_or_entity,
+      country: response.data.location.country,
+      lat: response.data.location.lat,
+      lon: response.data.location.lon,
     });
 
     return locations;

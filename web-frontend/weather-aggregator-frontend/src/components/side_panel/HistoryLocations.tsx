@@ -1,5 +1,7 @@
 
+
 import type { CurrentWeather } from "../../model/CurrentWeather";
+import type { LocationOption } from "../../model/LocationOption";
 import type { UserPreferencesWithHistory } from "../../model/UserPreferencesWithLocationHistory";
 
 
@@ -11,7 +13,7 @@ type Props = {
   userPreferencesWithHistory?: UserPreferencesWithHistory | null;
   favorite: CurrentWeather | null;
   history: CurrentWeather[];
-
+  setCurrentSelectedLocationOption : React.Dispatch<React.SetStateAction<LocationOption | null>>;
 };
 
 
@@ -20,9 +22,9 @@ export default function HistoryLocations(
       onStarClick,
       userPreferencesWithHistory,
       history,
+      setCurrentSelectedLocationOption
      }: Props
 ) {
-
 
 
 
@@ -33,15 +35,31 @@ export default function HistoryLocations(
     <h3>History</h3>
 
     {history.length > 0 ? (
-      history.map((item, index) => (
-        <div key={index} >
-          <WeatherEntry
-            weather={item}
-            userPreferencesWithHistory={userPreferencesWithHistory}
-            onStarClick={onStarClick}
-          />
-        </div>
-      ))
+      history.map((item, index) => {
+   
+        
+        // Added 'return' here because you are using curly braces { }
+        return (
+          <div 
+            key={index} 
+           
+            style={{
+              ...styles.weatherCardWrapper,
+            }} 
+            className="weather-card-wrapper" 
+            onClick={() => 3} // Replaced '3' with a placeholder function
+          >
+            <WeatherEntry
+              weather={item}
+              userPreferencesWithHistory={userPreferencesWithHistory}
+              onStarClick={onStarClick}
+              setCurrentSelectedLocationOption={setCurrentSelectedLocationOption}
+            />
+
+           
+          </div>
+        );
+      })
     ) : (
       <div style={styles.errorMessage}>
         <p>No history locations.</p>
@@ -49,10 +67,10 @@ export default function HistoryLocations(
           Use the search bar to add locations.
         </span>
       </div>
-    )} {/* <--- The parenthesis here was missing! */}
+    )}
   </section>
-  );
-}
+);
+};
 
 const styles = {
   section: {
@@ -76,4 +94,42 @@ const styles = {
     color: "#555",
     margin: "20px 0",
   },
-};
+  weatherCardWrapper: {
+    position: "relative",
+    cursor: "pointer",
+    
+    transition: "transform 0.2s ease",
+    overflow: "hidden",
+    borderRadius: "3px",
+    display: "block", // Ensures it wraps the content correctly
+  },
+  // Base state for the overlay
+  cardOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    backgroundColor: "rgba(0, 0, 0, 0.15)",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    opacity: 0, // Hidden by default
+    transition: "opacity 0.3s ease",
+    backdropFilter: "blur(2px)",
+    pointerEvents: "none", // Allows clicks to pass through if needed
+  },
+  overlayIcon: {
+    fontSize: "2rem",
+    color: "white",
+    marginBottom: "8px",
+  },
+  overlayText: {
+    color: "white",
+    fontWeight: 600,
+    fontSize: "0.9rem",
+    textTransform: "uppercase",
+    letterSpacing: "1px",
+  },
+} as const;

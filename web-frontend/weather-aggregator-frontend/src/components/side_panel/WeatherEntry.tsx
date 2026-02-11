@@ -1,5 +1,7 @@
 
+
 import type { CurrentWeather } from "../../model/CurrentWeather";
+import type { LocationOption } from "../../model/LocationOption";
 import type { UserPreferencesWithHistory } from "../../model/UserPreferencesWithLocationHistory";
 
 
@@ -7,12 +9,14 @@ type Props = {
   weather: CurrentWeather;
   userPreferencesWithHistory?: UserPreferencesWithHistory | null;
   onStarClick: (entry: CurrentWeather) => void;
+  setCurrentSelectedLocationOption : React.Dispatch<React.SetStateAction<LocationOption | null>>;
 };
 
 export default function WeatherEntry({
   weather,
   userPreferencesWithHistory,
   onStarClick,
+  setCurrentSelectedLocationOption: setCurrentSelectedLocationOption
 
 }: Props) {
 
@@ -37,6 +41,27 @@ export default function WeatherEntry({
           weather.isFavorite ? "★" : "☆"
           }
         </button>
+
+        {/* Details Button (Three Dots) */}
+        <button
+          onClick={() => 
+            setCurrentSelectedLocationOption({
+              location_name: weather.location.name ?? null,
+              state: weather.location.state_region_province_or_entity ?? null,
+              country: weather.location.country ?? null,
+              lat: weather.location.lat,
+              lon: weather.location.lon,
+              current_weather: weather,
+
+            })
+          }
+          style={styles.iconButton}
+          title="Show more details"
+        >
+          ⋮
+        </button>
+
+        
       </div>
     </div>
   );
@@ -60,4 +85,18 @@ const styles = {
     fontSize: "18px",
     cursor: "pointer",
   },
-};
+  iconButton: {
+    background: "none",
+    border: "none",
+    fontSize: "20px",
+    cursor: "pointer",
+    padding: "4px 8px",
+    color: "#444",
+    borderRadius: "4px",
+    transition: "background 0.2s",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+} as const;
+

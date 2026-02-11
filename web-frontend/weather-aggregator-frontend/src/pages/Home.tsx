@@ -15,7 +15,7 @@ type HomeProps = {
   userPreferencesWithHistory: UserPreferencesWithHistory | null;
   syncUserPreferences: (prefs: UserPreferencesWithHistory | null) => void;
   currentSelectedLocationOption: LocationOption | null;
-  setCurrentSelectedLocationOption: (locationOption: LocationOption) => void;
+  setCurrentSelectedLocationOption : React.Dispatch<React.SetStateAction<LocationOption | null>>
 };
 
 export default function Home({ 
@@ -41,6 +41,44 @@ export default function Home({
     normalize(current.location.lon) === normalize(userPreferencesWithHistory.preferences.favorite_lon);
 
 
+  useEffect(() => {
+    if(!userPreferencesWithHistory) {
+      return 
+    }
+
+    if (!currentSelectedLocationOption) return;
+
+    if (currentSelectedLocationOption.lat !== null && currentSelectedLocationOption.lon !== null) {
+      let lat = currentSelectedLocationOption.lat;
+      let lon = currentSelectedLocationOption.lon;
+
+      console.log(lat + " "  + lon);
+      const isNewLocationAlreadyInHistory = userPreferencesWithHistory.history.some(item => {
+        return normalize(item.lat) === normalize(lat) &&
+          normalize(item.lon) === normalize(lon)
+      });
+    
+      if (isNewLocationAlreadyInHistory) {
+        return;
+      }
+    
+      setHistory(prev => [
+        ...prev, 
+        { 
+          ...currentSelectedLocationOption.current_weather, 
+          isFavorite: false 
+        } as CurrentWeather // Tell TS: "Trust me, this is a CurrentWeather object"
+      ]);
+          
+      addHistoryItem({
+        user_id: userPreferencesWithHistory.preferences.user_id,
+        location_name: currentSelectedLocationOption.location_name || "Unknown Location",
+        lat: lat,
+        lon: lon,
+      });
+    }
+
+  }, [currentSelectedLocationOption])
 
   useEffect(() => {
     if (!userPreferencesWithHistory) {
@@ -141,7 +179,7 @@ export default function Home({
 
   useEffect(() => {
     if (!userPreferencesWithHistory || !current) return;
-    console.log("idemo 2");
+  
     const isCurrentAlreadyInHistory = userPreferencesWithHistory.history.some(item => {
       return normalize(item.lat) === normalize(current.location.lat) &&
       normalize(item.lon) === normalize(current.location.lon)

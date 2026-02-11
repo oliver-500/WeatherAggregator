@@ -63,14 +63,14 @@ function App() {
             await logoutUser();
             setUserInfo(null);
             setUserPreferencesWithHistory(null);
-            alert("1");
+         
             await registerAnonymousUser();
             await sleep(retryDelay);
           }
 
           // Handle specific logic-based errors first
           if (status === 400) {
-            alert("2");
+       
             await registerAnonymousUser();
             await sleep(retryDelay);
             // Don't set success to true; loop will run again naturally
@@ -78,7 +78,7 @@ function App() {
             try {
               try {
                 if(isReinitialization) {
-                  alert("3");
+               
                   await registerAnonymousUser();
                 }
               }
@@ -92,7 +92,7 @@ function App() {
               await logoutUser();
               setUserInfo(null);
               setUserPreferencesWithHistory(null);
-              alert("4");
+             
               await registerAnonymousUser();    
               await sleep(retryDelay);    
             }
