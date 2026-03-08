@@ -48,6 +48,7 @@ hex = "0.4.3"
 subtle = "2.6.1"
 sha2 = "0.10.9"
 futures = {version = "0.3.31"}
+deadpool-lapin = "0.13.1"
 
 [dependencies.sqlx]
 version = "0.8.6"
@@ -59,4 +60,5 @@ features = [
     "uuid",
     "chrono",
     "migrate",
+
 ]

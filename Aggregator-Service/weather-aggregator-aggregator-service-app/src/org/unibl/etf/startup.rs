@@ -23,10 +23,7 @@ async fn health_check() -> impl Responder {
 
 }
 
-use async_trait::async_trait;
-use http::Extensions;
-use reqwest::Request;
-use reqwest_middleware::{Middleware, Next, Result};
+
 use rustls::ServerConfig;
 use tracing_actix_web::TracingLogger;
 use crate::org::unibl::etf::configuration::settings::HttpClientTlsIdentityBundle;

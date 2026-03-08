@@ -15,6 +15,7 @@ pub struct UserPublisher {
 
 use opentelemetry::propagation::Injector;
 use lapin::types::{ShortString, AMQPValue};
+use serde_json::to_vec;
 
 struct RabbitMqHeaderInjector<'a>(&'a mut FieldTable);
 
@@ -106,7 +107,7 @@ impl UserPublisher {
         event: StandardUserRegistered
     ) -> Result<(), BrokerError> {
 
-        let payload = serde_json::to_vec(&event).map_err(|e| {
+        let payload = to_vec(&event).map_err(|e| {
             BrokerError::Error(format!("Payload not serializable to json. Error: {}", e.to_string()))
         })?;
 
@@ -143,14 +144,14 @@ impl UserPublisher {
                     .with_headers(headers),
             )
             .await {
-            Ok(r) => {
-                tracing::info!("Message sent successfully");
-                r
-            },
-            Err(e) => {
-                tracing::error!("Message could not be sent to broker: {}", e.to_string());
-                return Err(BrokerError::PublishingError("Message could not be sent to broker".to_string()));
-            }
+                Ok(r) => {
+                    tracing::info!("Message sent successfully");
+                    r
+                },
+                Err(e) => {
+                    tracing::error!("Message could not be sent to broker: {}", e.to_string());
+                    return Err(BrokerError::PublishingError("Message could not be sent to broker".to_string()));
+                }
         };
 
         let _con = match publisher_confirm

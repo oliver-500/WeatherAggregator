@@ -1,6 +1,7 @@
 FROM redis:8.4
 
-COPY certs/ /etc/redis/
+COPY /certs/ /etc/redis/
+COPY /config /usr/local/etc/redis/
 
 EXPOSE 6379
 

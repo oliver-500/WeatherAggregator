@@ -1,0 +1,39 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO user_preferences\n            (user_id, user_type, unit_system, favorite_location_name, favorite_lat, favorite_lon)\n        VALUES ($1, COALESCE($2, 'GUEST'::user_account_type), $3, $4, $5::FLOAT8, $6::FLOAT8)\n        ON CONFLICT (user_id) DO UPDATE SET\n            user_type = CASE WHEN $2 IS NULL THEN user_preferences.user_type ELSE EXCLUDED.user_type END,\n            unit_system = EXCLUDED.unit_system,\n            favorite_location_name = EXCLUDED.favorite_location_name,\n            favorite_lat = EXCLUDED.favorite_lat,\n            favorite_lon = EXCLUDED.favorite_lon,\n            updated_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "user_account_type",
+            "kind": {
+              "Enum": [
+                "GUEST",
+                "STANDARD"
+              ]
+            }
+          }
+        },
+        {
+          "Custom": {
+            "name": "unit_system_type",
+            "kind": {
+              "Enum": [
+                "METRIC",
+                "IMPERIAL"
+              ]
+            }
+          }
+        },
+        "Text",
+        "Float8",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "80112b6b4d51d544ac0d93d1a82dda8efcc3828134edf338c9c4e388bd0ff35d"
+}

@@ -27,8 +27,7 @@ impl TryFrom<&RegisterStandardUserRequest> for UserEntity {
     type Error = UserError;
     fn try_from(req: &RegisterStandardUserRequest) -> Result<Self, Self::Error> {
         let user_password = UserPassword::parse(req.password.expose_secret().to_string())?;
-        let user_email = UserEmail::parse(req.email.clone())?;
-
+        let user_email = UserEmail::parse(&req.email)?;
 
         Ok(UserEntity {
             id: Uuid::new_v4(),

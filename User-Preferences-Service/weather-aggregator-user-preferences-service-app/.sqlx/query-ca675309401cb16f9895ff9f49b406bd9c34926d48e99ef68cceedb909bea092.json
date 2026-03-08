@@ -1,0 +1,78 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            user_id,\n            user_type as \"user_type: UserType\",\n            unit_system as \"unit_system: UnitSystemType\",\n            favorite_location_name,\n            favorite_lat::FLOAT8 as \"favorite_lat?\",\n            favorite_lon::FLOAT8 as \"favorite_lon?\",\n            updated_at as \"updated_at!\"\n        FROM user_preferences\n        WHERE user_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_type: UserType",
+        "type_info": {
+          "Custom": {
+            "name": "user_account_type",
+            "kind": {
+              "Enum": [
+                "GUEST",
+                "STANDARD"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "unit_system: UnitSystemType",
+        "type_info": {
+          "Custom": {
+            "name": "unit_system_type",
+            "kind": {
+              "Enum": [
+                "METRIC",
+                "IMPERIAL"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "favorite_location_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "favorite_lat?",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 5,
+        "name": "favorite_lon?",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      null,
+      null,
+      true
+    ]
+  },
+  "hash": "ca675309401cb16f9895ff9f49b406bd9c34926d48e99ef68cceedb909bea092"
+}

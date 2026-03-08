@@ -13,7 +13,13 @@ RUN npm run build
 
 # Runtime stage
 FROM nginx:alpine
+
+RUN rm /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+COPY weather-aggregator-ca.crt /etc/nginx/certs/weather-aggregator-ca.crt
+
 COPY --from=build /app/dist /usr/share/nginx/html
 
 
-EXPOSE 80
+EXPOSE 8080

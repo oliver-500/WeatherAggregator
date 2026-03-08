@@ -5,9 +5,9 @@ set -e
 : "${CONFIG_FILE=/data/weather-aggregator-tracing-collector-config.yaml}"
 : "${JAEGER_BIN:=/cmd/jaeger/jaeger-linux}"
 : "${RECEIVER_OTLP_GRPC_PORT:=4317}"
-: "${RECEIVER_OTLP_GRPC_TLS_CERT:=/certs/weather-aggregator-tracing-collector.crt}"
-: "${RECEIVER_OTLP_GRPC_TLS_KEY:=/certs/weather-aggregator-tracing-collector.key}"
-: "${RECEIVER_OTLP_GRPC_TLS_CA:=/weather-aggregator-ca.crt}"
+: "${RECEIVER_OTLP_GRPC_TLS_CERT:=/usr/local/certs/weather-aggregator-tracing-collector.crt}"
+: "${RECEIVER_OTLP_GRPC_TLS_KEY:=/usr/local/certs/weather-aggregator-tracing-collector.key}"
+: "${RECEIVER_OTLP_GRPC_TLS_CA:=/usr/local/certs//weather-aggregator-ca.crt}"
 
 
 enable_otlp_receiver_mtls() {
@@ -17,9 +17,9 @@ enable_otlp_receiver_mtls() {
     print $0
     if ($0 ~ /grpc:/) {
       print "        tls:"
-      print "          cert_file: /certs/weather-aggregator-tracing-collector.crt"
-      print "          key_file: /certs/weather-aggregator-tracing-collector.key"
-      print "          client_ca_file: /certs/weather-aggregator-ca.crt"
+      print "          cert_file: /usr/local/certs/weather-aggregator-tracing-collector.crt"
+      print "          key_file: /usr/local/certs/weather-aggregator-tracing-collector.key"
+      print "          client_ca_file: /usr/local/certs/weather-aggregator-ca.crt"
       found=1
     }
   }' "$CONFIG_FILE" > "${CONFIG_FILE}.tmp"
@@ -33,8 +33,8 @@ enable_otlp_receiver_tls() {
     print $0
     if ($0 ~ /grpc:/) {
       print "        tls:"
-      print "          cert_file: /certs/weather-aggregator-tracing-collector.crt"
-      print "          key_file: /certs/weather-aggregator-tracing-collector.key"
+      print "          cert_file: /usr/local/certs/weather-aggregator-tracing-collector.crt"
+      print "          key_file: /usr/local/certs/weather-aggregator-tracing-collector.key"
       found=1
     }
   }' "$CONFIG_FILE" > "${CONFIG_FILE}.tmp"
@@ -95,7 +95,7 @@ ELASTIC_HEALTH_URL="https://weather-aggregator-elasticsearch-tracing-storage:920
 
 echo "Waiting for Elasticsearch..."
 
-until response=$(curl --cacert /certs/weather-aggregator-ca.crt \
+until response=$(curl --cacert /usr/local/certs/weather-aggregator-ca.crt \
                       -u "${ELASTIC_USERNAME}:${ELASTIC_PASSWORD}" \
                       -s https://weather-aggregator-elasticsearch-tracing-storage:9200/_cluster/health?wait_for_status=yellow 2>&1)
 do

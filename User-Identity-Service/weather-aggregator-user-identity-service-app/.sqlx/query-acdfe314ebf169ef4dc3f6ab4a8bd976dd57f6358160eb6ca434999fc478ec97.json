@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, user_id, hashed_value, is_revoked\n        FROM refresh_token\n        WHERE user_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "hashed_value",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "is_revoked",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "acdfe314ebf169ef4dc3f6ab4a8bd976dd57f6358160eb6ca434999fc478ec97"
+}

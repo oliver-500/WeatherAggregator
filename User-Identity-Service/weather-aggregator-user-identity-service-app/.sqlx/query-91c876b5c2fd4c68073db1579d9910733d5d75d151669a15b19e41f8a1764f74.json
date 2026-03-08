@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO wa_user (id, email, password_hash, user_type, is_locked)\n            VALUES ($1, $2, $3, $4::user_account_type, $5)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        {
+          "Custom": {
+            "name": "user_account_type",
+            "kind": {
+              "Enum": [
+                "GUEST",
+                "STANDARD"
+              ]
+            }
+          }
+        },
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "91c876b5c2fd4c68073db1579d9910733d5d75d151669a15b19e41f8a1764f74"
+}

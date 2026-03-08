@@ -39,7 +39,7 @@ impl fmt::Display for GenericServiceError {
 
 impl error::ResponseError for GenericServiceError {
     fn status_code(&self) -> StatusCode {
-        let status_code : StatusCode = match self.error.code {
+        match self.error.code {
             AggregatorError::RequestParametersValidationError(_) => {
                 StatusCode::BAD_REQUEST
             },
@@ -55,21 +55,29 @@ impl error::ResponseError for GenericServiceError {
             _ => {
                 StatusCode::INTERNAL_SERVER_ERROR
             },
-        };
-        status_code
+        }
     }
 
     fn error_response(&self) -> HttpResponse {
         let mut sanitized_details = self.error.clone();
         sanitized_details.message = sanitized_details.code.get_sanitized_message();
 
-        // 2. Sanitize the clone
         sanitized_details.code = sanitized_details.code.get_sanitized_error();
 
         HttpResponse::build(self.status_code())
             .json(GenericServiceError {
                 error: sanitized_details,
             })
+    }
+}
+
+impl From<AggregatorError> for GenericServiceError {
+    fn from(e: AggregatorError) -> Self {
+        // You can keep your logging here so it happens every time the conversion occurs
+        tracing::error!("{}", e.get_message());
+        Self {
+            error: GenericServiceErrorDetails::new_aggregator_error(e)
+        }
     }
 }
 

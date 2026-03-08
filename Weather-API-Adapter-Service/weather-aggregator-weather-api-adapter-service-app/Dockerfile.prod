@@ -1,0 +1,47 @@
+# --- Builder Stage ---
+FROM rust:1.92.0-slim AS builder
+
+WORKDIR /app
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    lld clang pkg-config libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy manifests first to cache dependencies
+COPY Cargo.toml Cargo.lock ./
+# Copy the rest of the metadata
+COPY .cargo ./.cargo
+COPY src ./src
+
+
+
+# Build the binary
+RUN cargo build --release
+
+# --- Runtime Stage ---
+# Use a tiny base image for the final artifact
+FROM ubuntu:24.04 AS runtime
+
+WORKDIR /app
+
+
+
+# Install OpenSSL (required by most Rust network apps) and CA certificates
+RUN apt-get update && apt-get install -y \
+    libssl3 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+	
+COPY ./resources/tls/weather-aggregator-ca.crt /usr/local/share/ca-certificates/weather-aggregator-ca.crt
+RUN apt-get update && apt-get install -y ca-certificates && update-ca-certificates	
+	
+ENV APP_ENV=dev
+
+# Copy only the binary from the builder
+COPY --from=builder /app/target/release/weather-aggregator-weather-api-adapter-service-app .
+
+# Copy resources (the folder itself)
+COPY resources ./resources
+
+# Use the binary name directly
+ENTRYPOINT ["./weather-aggregator-weather-api-adapter-service-app"]

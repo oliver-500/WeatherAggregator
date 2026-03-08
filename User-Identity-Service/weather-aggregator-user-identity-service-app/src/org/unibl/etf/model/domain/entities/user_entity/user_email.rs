@@ -5,9 +5,9 @@ use crate::org::unibl::etf::model::domain::errors::user_error::UserError;
 pub struct UserEmail(pub String);
 
 impl UserEmail {
-    pub fn parse(s: String) -> Result<UserEmail, UserError> {
-        if validator::ValidateEmail::validate_email(&s) {
-            Ok(UserEmail(s))
+    pub fn parse(s: &String) -> Result<UserEmail, UserError> {
+        if validator::ValidateEmail::validate_email(s) {
+            Ok(UserEmail(s.clone()))
         } else {
             Err(UserError::EmailInIncorrectFormat)
         }

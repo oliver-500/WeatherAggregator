@@ -103,27 +103,19 @@ impl UserIdentityRepository {
         skip(self)
     )]
     pub async fn get_user_by_email(&self, email: &str) -> Result<UserEntity, sqlx::Error> {
-        let row = sqlx::query!(
-            r#"
-            SELECT id, email, password_hash, user_type as "user_type: UserType", is_locked
-            FROM wa_user
-            WHERE email = $1
-            "#,
+        sqlx::query!(
+            r#"SELECT id, email, password_hash, user_type as "user_type: UserType", is_locked
+               FROM wa_user WHERE email = $1"#,
             email
-        )
-            .fetch_one(&self.db_pool)
-            .await?;
-
-        // 2. Map raw strings to your Domain Types
-        // Assuming UserEmail and Password have a .new() or parse method
-        Ok(UserEntity {
-            id: row.id,
-            // .map wraps the inner String into your NewType only if it exists
-            email: row.email.map(UserEmail),
-            password_hash: row.password_hash.map(|h| UserPassword(SecretString::from(h))),
-            user_type: row.user_type,
-            is_locked: row.is_locked,
-        })
+        ).fetch_one(&self.db_pool)
+            .await
+            .map(|row| UserEntity {
+                id: row.id,
+                email: row.email.map(UserEmail),
+                password_hash: row.password_hash.map(|h| UserPassword(SecretString::from(h))),
+                user_type: row.user_type,
+                is_locked: row.is_locked,
+            })
     }
 
 

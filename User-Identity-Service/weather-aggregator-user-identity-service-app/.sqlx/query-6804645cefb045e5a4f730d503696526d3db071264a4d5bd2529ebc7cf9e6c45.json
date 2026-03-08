@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, email, password_hash, user_type as \"user_type: UserType\", is_locked\n               FROM wa_user WHERE email = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "password_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "user_type: UserType",
+        "type_info": {
+          "Custom": {
+            "name": "user_account_type",
+            "kind": {
+              "Enum": [
+                "GUEST",
+                "STANDARD"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "is_locked",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "6804645cefb045e5a4f730d503696526d3db071264a4d5bd2529ebc7cf9e6c45"
+}

@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE user_preferences\n        SET user_id = $1, user_type = $2, updated_at = NOW()\n        WHERE user_id = $3\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "user_account_type",
+            "kind": {
+              "Enum": [
+                "GUEST",
+                "STANDARD"
+              ]
+            }
+          }
+        },
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2df0d32b1d9c5a8d6bd15ea50bcc81dc01b4f1ee58428b139a6dbaec1f4a2682"
+}

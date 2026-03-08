@@ -4,7 +4,7 @@ import { weatherApi } from './client';
 
 export const getWeatherDataByCoordinates = async (lat: number, lon: number) => {
     try {
-      const response = await weatherApi.get('/current_weather_by_coordinates', {
+      const response = await weatherApi.get('current_weather_by_coordinates', {
         params: { lat, lon }
       });
     console.log(response.data);
@@ -17,7 +17,7 @@ export const getWeatherDataByCoordinates = async (lat: number, lon: number) => {
 
 export const getWeatherDataByIpAddress = async () => {
   try {
-    const response = await weatherApi.get('/current_weather_by_ip_address');
+    const response = await weatherApi.get('current_weather_by_ip_address');
   console.log(response.data);
     // 3. Update your React state with the result
     return response.data;
@@ -29,7 +29,7 @@ export const getWeatherDataByIpAddress = async () => {
 
 export const getWeatherDataByCityName = async (locationName: string) => {
   try {
-    const response = await weatherApi.get('/current_weather_by_location', {
+    const response = await weatherApi.get('current_weather_by_location', {
       params: { location_name: locationName }
     });
   console.log(response.data);

@@ -16,13 +16,21 @@ use crate::org::unibl::etf::services::current_weather_service::CurrentWeatherSer
 use crate::org::unibl::etf::util::is_local_ip;
 
 pub fn routes(cfg: &mut web::ServiceConfig) {
-    cfg.service(web::resource("/current_weather_by_coordinates").route(web::get().to(get_current_weather_data_by_coordinates)))
-        .service(web::resource("/current_weather_by_location").route(web::get().to(get_current_weather_data_by_location)))
-        .service(web::resource("/current_weather_by_ip_address").route(web::get().to(get_current_weather_data_by_ip_address)));
+    cfg
+        .route("/current_weather_by_coordinates", web::get().to(get_current_weather_data_by_coordinates))
+        .route("/current_weather_by_location", web::get().to(get_current_weather_data_by_location))
+        .route("/current_weather_by_ip_address", web::get().to(get_current_weather_data_by_ip_address));
 }
 
-#[tracing::instrument(name = "Get Current Weather Data Controller",
-    skip(http_client, current_weather_service, cache_service_settings, providers_configuration))]
+#[tracing::instrument(
+    name = "Get Current Weather Data Controller",
+    skip(
+        http_client,
+        current_weather_service,
+        cache_service_settings,
+        providers_configuration
+    )
+)]
 async fn get_current_weather_data_by_coordinates(
     query: Query<UpstreamCurrentWeatherRequestByCoordinates>,
     http_client: web::Data<ClientWithMiddleware>,
@@ -30,29 +38,37 @@ async fn get_current_weather_data_by_coordinates(
     cache_service_settings: web::Data<CacheServiceSettings>,
     current_weather_service: web::Data<CurrentWeatherService>
 ) -> Result<impl Responder, GenericServiceError> {
-    let query = CurrentWeatherCoordinatesQuery {
+    let data = CurrentWeatherCoordinatesQuery {
         request: query.into_inner(),
         cache_service: CurrentWeatherCacheService::default(),
     };
-    println!("op1");
-    Ok(current_weather_service.get_current_weather(
-        query,
-        http_client,
-        providers_configuration,
-        cache_service_settings,
-    ).await
-           .and_then(|current_weather_data| Ok(HttpResponse::Ok().json(current_weather_data)))
-           .map_err(|e| {
-               tracing::error!("Was not able to get current weather data with error: {:?}", e);
-               GenericServiceError {
-                   error: GenericServiceErrorDetails::new_aggregator_error(e)
-               }
-           })?
-    )
+
+    let res = current_weather_service
+        .get_current_weather(
+            data,
+            http_client,
+            providers_configuration,
+            cache_service_settings,
+        )
+        .await
+        .and_then(|current_weather_data|
+            Ok(HttpResponse::Ok()
+                .json(current_weather_data)
+            )
+        )?;
+
+    Ok(res)
 }
 
-#[tracing::instrument(name = "Get Current Weather Data Controller",
-    skip(http_client, current_weather_service, cache_service_settings, providers_configuration))]
+#[tracing::instrument(
+    name = "Get Current Weather Data Controller",
+    skip(
+        http_client,
+        current_weather_service,
+        cache_service_settings,
+        providers_configuration
+    )
+)]
 async fn get_current_weather_data_by_location(
     query: Query<UpstreamCurrentWeatherRequestByLocation>,
     http_client: web::Data<ClientWithMiddleware>,
@@ -65,24 +81,31 @@ async fn get_current_weather_data_by_location(
         cache_service: CurrentWeatherCacheService::default()
     };
     
-    Ok(current_weather_service.get_current_weather(
-        query,
-        http_client,
-        providers_configuration,
-        cache_service_settings,
-    ).await
-        .and_then(|current_weather_data| Ok(HttpResponse::Ok().json(current_weather_data)))
-        .map_err(|e| {
-            tracing::error!("Was not able to get current weather data with error: {:?}", e);
-            GenericServiceError {
-                error: GenericServiceErrorDetails::new_aggregator_error(e)
-            }
-        })?
-    )
+    let res = current_weather_service
+        .get_current_weather(
+            query,
+            http_client,
+            providers_configuration,
+            cache_service_settings,
+        )
+        .await
+        .and_then(|current_weather_data|
+            Ok(HttpResponse::Ok()
+                .json(current_weather_data)
+            )
+        )?;
+
+    Ok(res)
 }
 
-#[tracing::instrument(name = "Get Current Weather Data Controller",
-    skip(http_client, current_weather_service, cache_service_settings, providers_configuration))]
+#[tracing::instrument(
+    name = "Get Current Weather Data Controller",
+    skip(
+        http_client,
+        current_weather_service,
+        cache_service_settings,
+        providers_configuration)
+)]
 async fn get_current_weather_data_by_ip_address(
     http_client: web::Data<ClientWithMiddleware>,
     providers_configuration: web::Data<Vec<ProviderSettings>>,
@@ -93,15 +116,12 @@ async fn get_current_weather_data_by_ip_address(
 ) -> Result<impl Responder, GenericServiceError> {
     let ip_str = conn.realip_remote_addr().unwrap_or("");
 
-    let ip: IpAddr = match ip_str.parse() {
-        Ok(parsed) => parsed,
-        Err(e) => {
-            tracing::error!("Error while parsing ip address: {:?}", e);
-            return Err(GenericServiceError {
-                error: GenericServiceErrorDetails::new_aggregator_error(AggregatorError::ServerError(None))
-            })
-        },
-    };
+    let ip: IpAddr = ip_str.parse::<IpAddr>().map_err(|e| {
+        tracing::error!("Error while parsing ip address: {:?}", e);
+        GenericServiceError {
+            error: GenericServiceErrorDetails::new_aggregator_error(AggregatorError::ServerError(None))
+        }
+    })?;
 
     let ip: IpAddr = if is_local_ip(ip) {
         let ip = req
@@ -115,31 +135,27 @@ async fn get_current_weather_data_by_ip_address(
                     AggregatorError::LocalIpError,
                 ),
             })?;
-
-        println!("found ip {}", ip);
         ip
     } else {
         ip
     };
 
-
     let query = CurrentWeatherIpAddressQuery {
         request: ip,
     };
 
-    Ok(current_weather_service.get_current_weather(
-        query,
-        http_client,
-        providers_configuration,
-        cache_service_settings,
-    ).await
-        .and_then(|current_weather_data| Ok(HttpResponse::Ok().json(current_weather_data)))
-        .map_err(|e| {
-            tracing::error!("Was not able to get current weather data with error: {:?}", e);
-            GenericServiceError {
-                error: GenericServiceErrorDetails::new_aggregator_error(e)
-            }
-        })?
-    )
+    let res = current_weather_service
+        .get_current_weather(
+            query,
+            http_client,
+            providers_configuration,
+            cache_service_settings,
+        ).await
+        .and_then(|current_weather_data|
+            Ok(HttpResponse::Ok()
+                .json(current_weather_data))
+        )?;
+
+    Ok(res)
 }
 

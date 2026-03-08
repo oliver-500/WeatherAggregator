@@ -6,7 +6,7 @@ import type { AddHistoryItemRequest } from '../model/requests/AddHistoryItemRequ
 
 export const getUserPreferencesWithHistory = async (req: GetUserPreferencesRequest) => {
     try {
-      const response = await userApi.post('/preferences', req);
+      const response = await userApi.post('preferences', req);
       console.log(response.data);
       return response.data;
     } catch (error) {
@@ -17,7 +17,7 @@ export const getUserPreferencesWithHistory = async (req: GetUserPreferencesReque
 
 export const updateUserPreferencesWithHistory = async (req: UpdateUserPreferencesRequest) => {
     try {
-      await userApi.put('/preferences', req);
+      await userApi.put('preferences', req);
     } catch (error) {
       throw error;
     }
@@ -26,7 +26,7 @@ export const updateUserPreferencesWithHistory = async (req: UpdateUserPreference
 
 export const addHistoryItem = async (req: AddHistoryItemRequest) => {
     try {
-      await userApi.post('/history', req);
+      await userApi.post('history', req);
     } catch (error) {
       throw error;
     }   

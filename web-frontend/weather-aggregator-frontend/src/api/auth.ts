@@ -5,13 +5,13 @@ import type { GenericServiceError } from '../model/errors/GenericServiceError.ts
 import { ApiError } from '../model/errors/ApiError.ts';
 
 export const registerUser = async (userRegistrationData : RegisterUserRequest) => {
-    const response = await authApi.post('/register', userRegistrationData);
+    const response = await authApi.post('register', userRegistrationData);
   return response.data;
 };
 
 export const loginUser = async (loginUserRequest : LoginUserRequest) => {
     try {
-      const response = await authApi.post('/login', 
+      const response = await authApi.post('login', 
         loginUserRequest
     );
 
@@ -40,7 +40,7 @@ export const loginUser = async (loginUserRequest : LoginUserRequest) => {
 
 export const getUserInfo = async () => {
   try {
-    const response = await authApi.get('/user_info');
+    const response = await authApi.get('user_info');
     return response.data;
   } catch (error: any) {
     let finalMessage = "An unexpected error occurred.";
@@ -65,7 +65,7 @@ export const getUserInfo = async () => {
 
 export const refreshAccessToken = async () => {
   try {
-    await authApi.get('/refresh');
+    await authApi.get('refresh');
 
   } catch (error: any) {
     let finalMessage = "An unexpected error occurred.";
@@ -90,7 +90,7 @@ export const refreshAccessToken = async () => {
 
 export const registerAnonymousUser = async () => {
   try {
-    await authApi.get('/anonymous');
+    await authApi.get('anonymous');
 
   } catch (error: any) {
     let finalMessage = "An unexpected error occurred.";
@@ -115,7 +115,7 @@ export const registerAnonymousUser = async () => {
 
 
 export const logoutUser = async () => {
-  authApi.post('/logout').then(() => {
+  authApi.post('logout').then(() => {
   }).catch((err: any) => {
     throw err;
   });

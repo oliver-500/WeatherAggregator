@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO refresh_token (id, user_id, hashed_value, is_revoked)\n            VALUES ($1, $2, $3, $4)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c4d095dbfdb977b0ed5663dcbe4c197b86b5d6e9d5270606fe3f73bf069ce9fa"
+}

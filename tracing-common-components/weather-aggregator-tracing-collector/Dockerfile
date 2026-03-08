@@ -3,13 +3,13 @@ FROM jaegertracing/jaeger:2.11.0
 
 USER root
 RUN apk add --no-cache curl
-COPY /certs /certs
+COPY /certs /usr/local/certs
 
 
 
 COPY weather-aggregator-tracing-collector-config.yaml /data/weather-aggregator-tracing-collector-config.yaml
 
-RUN mkdir -p /data && chown -R 10001:10001 /data /certs
+RUN mkdir -p /data && chown -R 10001:10001 /data /usr/local/certs
 
 
 COPY weather-aggregator-tracing-collector-init.sh /data/weather-aggregator-tracing-collector-init.sh

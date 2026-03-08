@@ -15,7 +15,7 @@ pub fn get_configuration(config_path : &str) -> Result<Settings, config::ConfigE
     let configuration_directory = base_path.join(config_path);
 
     let environment: RunningEnvironment = std::env::var("APP_ENV")
-        .unwrap_or_else(|_| "prod".into())
+        .unwrap_or_else(|_| "dev".into())
         .try_into()
         .expect("Failed to parse required environment variable with name APP_ENV.");
 

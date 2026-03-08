@@ -136,17 +136,17 @@ async fn authenticate_standard_user(
     auth_service: web::Data<AuthService>,
     request_body: web::Json<LoginStandardUserRequest>,
 ) -> Result<impl Responder, GenericServiceError> {
-    let res = auth_service.
-        authenticate_standard_user(
+    let res = auth_service
+        .authenticate_standard_user(
             request_body.into_inner()
         ).await
-        .and_then(|(access_token, refresh_token)| {
+        .and_then(|(access_token, refresh_token)|
             Ok(HttpResponse::Ok()
                 .cookie(build_cookie_with_token(access_token, "access_token"))
                 .cookie(build_cookie_with_token(refresh_token, "refresh_token"))
                 .finish()
             )
-        })?;
+        )?;
 
     Ok(res)
 }
